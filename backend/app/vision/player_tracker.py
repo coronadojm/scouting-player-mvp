@@ -1,15 +1,21 @@
-from ultralytics import YOLO
 from pathlib import Path
 import cv2
 import math
 
 _model = None
 
+
 def get_model():
     global _model
+    try:
+        from ultralytics import YOLO
+    except Exception as e:
+        raise RuntimeError(f"ultralytics no disponible: {e}")
+
     if _model is None:
         _model = YOLO("yolov8n.pt")
     return _model
+
 
 def track_selected_player(video_path, selected_x=-1, selected_y=-1, frame_percent=25, max_seconds=25):
     path = Path(video_path)
@@ -21,7 +27,15 @@ def track_selected_player(video_path, selected_x=-1, selected_y=-1, frame_percen
     end_frame = min(total_frames, start_frame + int(max_seconds * fps))
     cap.release()
 
-    model = get_model()
+    try:
+        model = get_model()
+    except Exception:
+        return {
+            "engine": "fallback_no_yolo",
+            "points": [],
+            "active": False,
+            "count": 0
+        }
 
     target_id = None
     heat_points = []
