@@ -24,6 +24,24 @@ UPLOAD_DIR.mkdir(exist_ok=True)
 JOBS = {}
 engine = MockAnalysisEngine()
 
+JOBS_DIR = Path("jobs")
+JOBS_DIR.mkdir(exist_ok=True)
+
+def save_job(job_id: str):
+    import json
+    (JOBS_DIR / f"{job_id}.json").write_text(json.dumps(JOBS[job_id], default=str))
+
+def load_job(job_id: str):
+    import json
+    path = JOBS_DIR / f"{job_id}.json"
+    if path.exists():
+        return json.loads(path.read_text())
+    return JOBS.get(job_id)
+
+def update_job(job_id: str, data: dict):
+    JOBS[job_id].update(data)
+    save_job(job_id)
+
 
 @app.get("/health")
 async def health():
@@ -39,7 +57,7 @@ def run_analysis_job(job_id: str, saved_path: str, player: PlayerCreate):
     start = time.time()
 
     try:
-        JOBS[job_id].update({
+        update_job(job_id, {
             "status": "running",
             "progress": 10,
             "stage": "Vídeo recibido. Preparando análisis.",
@@ -49,7 +67,7 @@ def run_analysis_job(job_id: str, saved_path: str, player: PlayerCreate):
 
         time.sleep(0.05)
 
-        JOBS[job_id].update({
+        update_job(job_id, {
             "progress": 25,
             "stage": "Extrayendo frames del vídeo.",
             "elapsed_seconds": int(time.time() - start),
@@ -58,7 +76,7 @@ def run_analysis_job(job_id: str, saved_path: str, player: PlayerCreate):
 
         time.sleep(0.05)
 
-        JOBS[job_id].update({
+        update_job(job_id, {
             "progress": 45,
             "stage": "Calculando movimiento e intensidad.",
             "elapsed_seconds": int(time.time() - start),
@@ -67,7 +85,7 @@ def run_analysis_job(job_id: str, saved_path: str, player: PlayerCreate):
 
         time.sleep(0.05)
 
-        JOBS[job_id].update({
+        update_job(job_id, {
             "progress": 70,
             "stage": "Aplicando tracking manual/color-dorsal.",
             "elapsed_seconds": int(time.time() - start),
@@ -76,7 +94,7 @@ def run_analysis_job(job_id: str, saved_path: str, player: PlayerCreate):
 
         report = engine.analyze(video_path=saved_path, player=player)
 
-        JOBS[job_id].update({
+        update_job(job_id, {
             "progress": 90,
             "stage": "Generando informe profesional.",
             "elapsed_seconds": int(time.time() - start),
@@ -85,7 +103,7 @@ def run_analysis_job(job_id: str, saved_path: str, player: PlayerCreate):
 
         time.sleep(0.05)
 
-        JOBS[job_id].update({
+        update_job(job_id, {
             "status": "done",
             "progress": 100,
             "stage": "Análisis completado.",
@@ -95,7 +113,7 @@ def run_analysis_job(job_id: str, saved_path: str, player: PlayerCreate):
         })
 
     except Exception as e:
-        JOBS[job_id].update({
+        update_job(job_id, {
             "status": "failed",
             "progress": 100,
             "stage": "Error durante el análisis.",
@@ -156,6 +174,8 @@ async def start_video_analysis(
         "error": None,
     }
 
+    save_job(job_id)
+
     background_tasks.add_task(run_analysis_job, job_id, str(saved_path), player)
 
     return {"job_id": job_id}
@@ -163,20 +183,20 @@ async def start_video_analysis(
 
 @app.get("/analysis/video/status/{job_id}")
 async def video_analysis_status(job_id: str):
-    job = JOBS.get(job_id)
+    job = load_job(job_id)
 
     if not job:
         return {
-            "status": "not_found",
-            "progress": 0,
-            "stage": "Trabajo no encontrado.",
+            "status": "waiting",
+            "progress": 1,
+            "stage": "Esperando inicio del análisis.",
             "elapsed_seconds": 0,
-            "estimated_remaining_seconds": None,
+            "estimated_remaining_seconds": 60,
             "report": None,
-            "error": "Job no encontrado",
+            "error": None,
         }
 
-    started_at = job.get("started_at", time.time())
+    started_at = float(job.get("started_at", time.time()))
     elapsed = int(time.time() - started_at)
     progress = max(1, int(job.get("progress", 1)))
 

@@ -379,8 +379,9 @@ fun ScoutingApp() {
                                                     throw RuntimeException(status.error ?: "Error en análisis")
                                                 }
 
-                                                if (status.status == "not_found") {
-                                                    throw RuntimeException("No se encontró el análisis")
+                                                if (status.status == "not_found" || status.status == "waiting") {
+                                                    kotlinx.coroutines.delay(2000)
+                                                    continue
                                                 }
                                             }
 
