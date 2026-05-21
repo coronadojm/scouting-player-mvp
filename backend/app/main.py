@@ -120,9 +120,31 @@ def run_analysis_job(job_id: str, saved_path: str, player: PlayerCreate):
             "estimated_remaining_seconds": 20,
         })
 
-        analysis_path = segments[0] if segments else saved_path
+        from app.vision.segment_aggregator import merge_reports
 
-        report = engine.analyze(video_path=analysis_path, player=player)
+        reports=[]
+
+        for index,segment in enumerate(segments):
+
+            progress=78+int((index/max(1,len(segments)))*12)
+
+            update_job(job_id,{
+                "progress":progress,
+                "stage":f"Analizando segmento {index+1}/{len(segments)}",
+                "segments_done":index+1
+            })
+
+            try:
+                r=engine.analyze(
+                    video_path=segment,
+                    player=player
+                )
+                reports.append(r)
+
+            except Exception as e:
+                print(e)
+
+        report=merge_reports(reports)
 
         if isinstance(report, dict):
             report["video_segments"] = {
