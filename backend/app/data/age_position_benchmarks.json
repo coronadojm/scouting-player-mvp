@@ -1,0 +1,28 @@
+{
+  "Sub-14": {
+    "Interior Izquierdo": {
+      "technical": {"mean": 6.4, "std": 1.1},
+      "tactical": {"mean": 6.0, "std": 1.0},
+      "physical": {"mean": 6.7, "std": 1.2},
+      "decision_making": {"mean": 5.9, "std": 1.0},
+      "intensity": {"mean": 14.0, "std": 4.0},
+      "sharpness": {"mean": 2500.0, "std": 1200.0}
+    },
+    "Mediocentro": {
+      "technical": {"mean": 6.6, "std": 1.0},
+      "tactical": {"mean": 6.8, "std": 1.0},
+      "physical": {"mean": 6.2, "std": 1.1},
+      "decision_making": {"mean": 6.7, "std": 1.0},
+      "intensity": {"mean": 12.5, "std": 3.5},
+      "sharpness": {"mean": 2500.0, "std": 1200.0}
+    },
+    "Lateral Derecho": {
+      "technical": {"mean": 6.1, "std": 1.1},
+      "tactical": {"mean": 6.2, "std": 1.0},
+      "physical": {"mean": 7.0, "std": 1.1},
+      "decision_making": {"mean": 5.8, "std": 1.0},
+      "intensity": {"mean": 15.0, "std": 4.2},
+      "sharpness": {"mean": 2500.0, "std": 1200.0}
+    }
+  }
+}

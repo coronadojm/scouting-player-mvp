@@ -1,0 +1,287 @@
+package com.example.scoutingplayer
+
+import android.net.Uri
+import android.os.Bundle
+import android.provider.OpenableColumns
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import com.example.scoutingplayer.model.AnalysisReport
+import com.example.scoutingplayer.network.NetworkModule
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.MultipartBody
+import okhttp3.RequestBody.Companion.asRequestBody
+import okhttp3.RequestBody.Companion.toRequestBody
+import java.io.File
+
+class MainActivity : ComponentActivity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContent {
+            MaterialTheme(
+                colorScheme = lightColorScheme(
+                    primary = Color(0xFF1B5E20),
+                    secondary = Color(0xFF00A86B),
+                    background = Color(0xFFF4F7F4),
+                    surface = Color.White
+                )
+            ) {
+                ScoutingApp()
+            }
+        }
+    }
+}
+
+@Composable
+fun ScoutingApp() {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+
+    var playerName by remember { mutableStateOf("Jugador prueba") }
+    var age by remember { mutableStateOf("14") }
+    var category by remember { mutableStateOf("Infantil") }
+    var position by remember { mutableStateOf("Interior Izquierdo") }
+    var foot by remember { mutableStateOf("Derecha") }
+    var level by remember { mutableStateOf("Alto") }
+    var selectedVideoUri by remember { mutableStateOf<Uri?>(null) }
+    var report by remember { mutableStateOf<AnalysisReport?>(null) }
+    var loading by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf<String?>(null) }
+
+    val picker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        selectedVideoUri = uri
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0xFFF4F7F4))
+            .verticalScroll(rememberScrollState())
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(
+                    Brush.verticalGradient(
+                        listOf(Color(0xFF0B3D1B), Color(0xFF1B5E20))
+                    )
+                )
+                .padding(22.dp)
+        ) {
+            Column {
+                Text(
+                    "Scouting Player",
+                    style = MaterialTheme.typography.headlineLarge,
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    "Análisis formativo individual",
+                    color = Color(0xFFD7F5DD)
+                )
+            }
+        }
+
+        Column(
+            modifier = Modifier.padding(18.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Card(
+                shape = RoundedCornerShape(22.dp),
+                modifier = Modifier.fillMaxWidth(),
+                elevation = CardDefaults.cardElevation(4.dp)
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Text("Datos del jugador", fontWeight = FontWeight.Bold)
+
+                    OutlinedTextField(playerName, { playerName = it }, label = { Text("Nombre") }, modifier = Modifier.fillMaxWidth())
+                    OutlinedTextField(age, { age = it }, label = { Text("Edad") }, modifier = Modifier.fillMaxWidth())
+                    OutlinedTextField(category, { category = it }, label = { Text("Categoría") }, modifier = Modifier.fillMaxWidth())
+                    OutlinedTextField(position, { position = it }, label = { Text("Posición") }, modifier = Modifier.fillMaxWidth())
+                    OutlinedTextField(foot, { foot = it }, label = { Text("Pierna dominante") }, modifier = Modifier.fillMaxWidth())
+                    OutlinedTextField(level, { level = it }, label = { Text("Nivel") }, modifier = Modifier.fillMaxWidth())
+                }
+            }
+
+            Card(
+                shape = RoundedCornerShape(22.dp),
+                modifier = Modifier.fillMaxWidth(),
+                elevation = CardDefaults.cardElevation(4.dp)
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Text("Vídeo", fontWeight = FontWeight.Bold)
+
+                    Button(
+                        onClick = { picker.launch("video/*") },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(14.dp)
+                    ) {
+                        Text(if (selectedVideoUri == null) "Seleccionar vídeo" else "Vídeo seleccionado")
+                    }
+
+                    Button(
+                        enabled = selectedVideoUri != null && !loading,
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(14.dp),
+                        onClick = {
+                            val uri = selectedVideoUri ?: return@Button
+                            loading = true
+                            error = null
+                            report = null
+
+                            scope.launch {
+                                try {
+                                    val result = withContext(Dispatchers.IO) {
+                                        val tempFile = File.createTempFile("video_upload", ".mp4", context.cacheDir)
+
+                                        context.contentResolver.openInputStream(uri)?.use { input ->
+                                            tempFile.outputStream().use { output ->
+                                                input.copyTo(output)
+                                            }
+                                        } ?: error("No se pudo leer el vídeo")
+
+                                        val requestFile = tempFile.asRequestBody("video/mp4".toMediaTypeOrNull())
+                                        val fileName = context.getFileName(uri) ?: "video.mp4"
+
+                                        val videoPart = MultipartBody.Part.createFormData(
+                                            "video",
+                                            fileName,
+                                            requestFile
+                                        )
+
+                                        fun part(value: String) =
+                                            value.toRequestBody("text/plain".toMediaTypeOrNull())
+
+                                        NetworkModule.api.analyzeVideo(
+                                            video = videoPart,
+                                            playerName = part(playerName),
+                                            age = part(age),
+                                            category = part(category),
+                                            position = part(position),
+                                            dominantFoot = part(foot),
+                                            level = part(level)
+                                        )
+                                    }
+
+                                    report = result
+                                } catch (e: Exception) {
+                                    error = e.message ?: "Error desconocido"
+                                } finally {
+                                    loading = false
+                                }
+                            }
+                        }
+                    ) {
+                        Text(if (loading) "Analizando vídeo..." else "Analizar jugador")
+                    }
+
+                    if (loading) {
+                        LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                        Text("Subiendo y procesando el vídeo. Puede tardar unos minutos.")
+                    }
+
+                    error?.let {
+                        Card(colors = CardDefaults.cardColors(containerColor = Color(0xFFFFE5E5))) {
+                            Text(
+                                "Error: $it",
+                                color = Color(0xFFB00020),
+                                modifier = Modifier.padding(12.dp)
+                            )
+                        }
+                    }
+                }
+            }
+
+            report?.let { AnalysisReportView(it) }
+        }
+    }
+}
+
+@Composable
+fun AnalysisReportView(report: AnalysisReport) {
+    Card(
+        shape = RoundedCornerShape(24.dp),
+        modifier = Modifier.fillMaxWidth(),
+        elevation = CardDefaults.cardElevation(6.dp)
+    ) {
+        Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            Text("Informe de ${report.player_name}", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+            Text("${report.reference_group} · ${report.position}", color = Color.Gray)
+
+            ScoreCard("Nota global", report.scores.global_score)
+            ScoreCard("Técnica", report.scores.technical)
+            ScoreCard("Táctica", report.scores.tactical)
+            ScoreCard("Físico", report.scores.physical)
+            ScoreCard("Decisión", report.scores.decision_making)
+
+            Section("Resumen", report.scouting_summary)
+            BulletSection("Fortalezas", report.strengths)
+            BulletSection("A mejorar", report.improvements)
+            BulletSection("Ejercicios recomendados", report.training_tasks)
+
+            Text("Confianza del análisis: ${(report.confidence).toInt()}%", fontWeight = FontWeight.Bold)
+        }
+    }
+}
+
+@Composable
+fun ScoreCard(title: String, value: Double) {
+    Card(colors = CardDefaults.cardColors(containerColor = Color(0xFFEAF7EC))) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(12.dp),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(title, fontWeight = FontWeight.Bold)
+            Text("$value / 10", fontWeight = FontWeight.Bold, color = Color(0xFF1B5E20))
+        }
+    }
+}
+
+@Composable
+fun Section(title: String, text: String) {
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text(title, fontWeight = FontWeight.Bold)
+        Text(text)
+    }
+}
+
+@Composable
+fun BulletSection(title: String, items: List<String>) {
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text(title, fontWeight = FontWeight.Bold)
+        items.forEach { Text("• $it") }
+    }
+}
+
+fun android.content.Context.getFileName(uri: Uri): String? {
+    contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+        val nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+        if (cursor.moveToFirst() && nameIndex >= 0) {
+            return cursor.getString(nameIndex)
+        }
+    }
+    return null
+}

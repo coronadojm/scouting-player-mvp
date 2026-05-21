@@ -1,0 +1,8 @@
+backend/.venv/
+android-app/.gradle/
+android-app/build/
+android-app/app/build/
+*.apk
+*.aab
+*.keystore
+local.properties
