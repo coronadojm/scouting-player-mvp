@@ -145,6 +145,7 @@ async def start_video_analysis(
 
     JOBS[job_id] = {
         "status": "queued",
+        "started_at": time.time(),
         "progress": 5,
         "stage": "Subida completada. En cola de análisis.",
         "elapsed_seconds": 0,
@@ -160,15 +161,32 @@ async def start_video_analysis(
 
 @app.get("/analysis/video/status/{job_id}")
 async def video_analysis_status(job_id: str):
-    return JOBS.get(job_id, {
-        "status": "not_found",
-        "progress": 0,
-        "stage": "Trabajo no encontrado.",
-        "elapsed_seconds": 0,
-        "estimated_remaining_seconds": None,
-        "report": None,
-        "error": "Job no encontrado",
-    })
+    job = JOBS.get(job_id)
+
+    if not job:
+        return {
+            "status": "not_found",
+            "progress": 0,
+            "stage": "Trabajo no encontrado.",
+            "elapsed_seconds": 0,
+            "estimated_remaining_seconds": None,
+            "report": None,
+            "error": "Job no encontrado",
+        }
+
+    started_at = job.get("started_at", time.time())
+    elapsed = int(time.time() - started_at)
+    progress = max(1, int(job.get("progress", 1)))
+
+    if job.get("status") in ["done", "failed"]:
+        remaining = 0
+    else:
+        remaining = int(max(0, elapsed * (100 - progress) / progress))
+
+    job["elapsed_seconds"] = elapsed
+    job["estimated_remaining_seconds"] = remaining
+
+    return job
 
 
 @app.post("/analysis/video")
