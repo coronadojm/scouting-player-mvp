@@ -6,3 +6,12 @@ android-app/app/build/
 *.aab
 *.keystore
 local.properties
+android-app/.kotlin/
+android-app/MainActivity_backup.kt
+android-app/MainActivity_roto_backup.kt
+android-app/gradle/
+android-app/gradlew
+android-app/gradlew.bat
+backend/uploads/
+__pycache__/
+*.pyc

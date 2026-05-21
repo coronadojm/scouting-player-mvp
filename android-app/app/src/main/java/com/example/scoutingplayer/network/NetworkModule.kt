@@ -6,7 +6,7 @@ import retrofit2.converter.gson.GsonConverterFactory
 import java.util.concurrent.TimeUnit
 
 object NetworkModule {
-    private const val BASE_URL = "http://192.168.1.36:8000/"
+    private const val BASE_URL = "https://scouting-player-api.onrender.com/"
 
     private val client = OkHttpClient.Builder()
         .connectTimeout(60, TimeUnit.SECONDS)
