@@ -143,7 +143,7 @@ def analyze_video_file(
             break
 
         if frame_index % sample_every == 0:
-            resized = cv2.resize(frame, (120, 68))
+            resized = cv2.resize(frame, (96, 54))
             gray = cv2.cvtColor(resized, cv2.COLOR_BGR2GRAY)
 
             brightness_scores.append(float(np.mean(gray)))

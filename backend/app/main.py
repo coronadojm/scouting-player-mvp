@@ -47,7 +47,7 @@ def run_analysis_job(job_id: str, saved_path: str, player: PlayerCreate):
             "estimated_remaining_seconds": 60,
         })
 
-        time.sleep(0.3)
+        time.sleep(0.05)
 
         JOBS[job_id].update({
             "progress": 25,
@@ -56,7 +56,7 @@ def run_analysis_job(job_id: str, saved_path: str, player: PlayerCreate):
             "estimated_remaining_seconds": 45,
         })
 
-        time.sleep(0.3)
+        time.sleep(0.05)
 
         JOBS[job_id].update({
             "progress": 45,
@@ -65,13 +65,13 @@ def run_analysis_job(job_id: str, saved_path: str, player: PlayerCreate):
             "estimated_remaining_seconds": 30,
         })
 
-        time.sleep(0.3)
+        time.sleep(0.05)
 
         JOBS[job_id].update({
-            "progress": 65,
+            "progress": 70,
             "stage": "Aplicando tracking manual/color-dorsal.",
             "elapsed_seconds": int(time.time() - start),
-            "estimated_remaining_seconds": 20,
+            "estimated_remaining_seconds": 10,
         })
 
         report = engine.analyze(video_path=saved_path, player=player)
@@ -83,7 +83,7 @@ def run_analysis_job(job_id: str, saved_path: str, player: PlayerCreate):
             "estimated_remaining_seconds": 5,
         })
 
-        time.sleep(0.2)
+        time.sleep(0.05)
 
         JOBS[job_id].update({
             "status": "done",
@@ -183,7 +183,7 @@ async def video_analysis_status(job_id: str):
     if job.get("status") in ["done", "failed"]:
         remaining = 0
     else:
-        remaining = int(max(0, elapsed * (100 - progress) / progress))
+        remaining = int(max(0, (elapsed / max(progress, 1)) * (100 - progress)))
 
     job["elapsed_seconds"] = elapsed
     job["estimated_remaining_seconds"] = remaining
