@@ -251,3 +251,15 @@ async def analyze_video(
     )
 
     return engine.analyze(video_path=str(saved_path), player=player)
+
+
+@app.get("/debug/vision-modules")
+def debug_vision_modules():
+    return {
+        "ball_tracker": True,
+        "event_detector": True,
+        "statsbomb_like": True,
+        "metrica_like": True,
+        "soccernet_like": True,
+        "status": "ok"
+    }
