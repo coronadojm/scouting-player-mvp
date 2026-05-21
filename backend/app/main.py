@@ -61,7 +61,7 @@ def run_analysis_job(job_id: str, saved_path: str, player: PlayerCreate):
         update_job(job_id, {
             "status": "running",
             "progress": 10,
-            "stage": "Vídeo recibido. Preparando análisis.",
+            "stage": "Vídeo recibido. Preparando análisis rápido MVP. Máximo recomendado: 60 segundos.",
             "elapsed_seconds": 0,
             "estimated_remaining_seconds": 60,
         "estimated_total_seconds": 90,
