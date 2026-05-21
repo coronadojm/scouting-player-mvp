@@ -10,3 +10,6 @@ torchvision
 pandas
 scipy
 requests
+ultralytics
+torch
+torchvision

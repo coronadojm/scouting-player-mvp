@@ -3,6 +3,7 @@ import json
 import math
 import numpy as np
 from pathlib import Path
+from app.vision.player_tracker import track_selected_player
 from app.vision.player_tracker import track_players_video
 
 
@@ -288,6 +289,7 @@ def analyze_video_file(
             f"FPS: {fps:.1f}",
             f"Movimiento medio: {avg_motion:.1f}",
             f"Nitidez: {avg_sharpness:.1f}",
+            f"Tracking engine: YOLOv8n + ByteTrack",
             f"Tracking engine: YOLOv8n + ByteTrack",
             f"Tracking points: {len(heat_points)}",
             f"HEATMAP_POINTS={heatmap_encoded}",
