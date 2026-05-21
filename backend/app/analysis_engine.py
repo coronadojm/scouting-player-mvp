@@ -186,6 +186,7 @@ def analyze_video_file(
 
     from app.vision.ball_tracker import track_ball_video
     from app.vision.event_detector import detect_basic_events
+    from app.vision.exporters.statsbomb_like import export_events
 
     ball_result = track_ball_video(
         video_path=str(path),
@@ -193,6 +194,7 @@ def analyze_video_file(
     )
     ball_points = ball_result.get("points", [])
     events = detect_basic_events(heat_points, ball_points)
+    statsbomb_events = export_events(events)
 
     physical = min(10, max(4, 5.5 + avg_motion / 8))
     technical = min(10, max(4, 6.0 + avg_sharpness / 350))
