@@ -42,7 +42,9 @@ async def analyze_video(
     level: str = Form(...),
     dorsal: str = Form("0"),
     shirt_color: str = Form("No indicado"),
-    identification_mode: str = Form("Dorsal + selección manual")
+    identification_mode: str = Form("Dorsal + selección manual"),
+    selected_x: float = Form(-1.0),
+    selected_y: float = Form(-1.0)
 ):
     saved_path = await save_upload(video)
 
@@ -55,7 +57,9 @@ async def analyze_video(
         level=level,
         dorsal=dorsal,
         shirt_color=shirt_color,
-        identification_mode=identification_mode
+        identification_mode=identification_mode,
+        selected_x=selected_x,
+        selected_y=selected_y
     )
 
     return engine.analyze(video_path=saved_path, player=player)

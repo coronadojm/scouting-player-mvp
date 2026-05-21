@@ -11,6 +11,8 @@ class PlayerCreate(BaseModel):
     dorsal: str = "0"
     shirt_color: str = "No indicado"
     identification_mode: str = "Dorsal + selección manual"
+    selected_x: float = -1.0
+    selected_y: float = -1.0
     level: str
 
 

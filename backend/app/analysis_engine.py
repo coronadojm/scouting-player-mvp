@@ -1,11 +1,8 @@
+import cv2
 import json
 import math
-import cv2
 import numpy as np
 from pathlib import Path
-from app.data_providers.open_sources import OpenFootballDataProvider
-from app.data_providers.wyscout_hudl import WyscoutHudlProvider
-
 
 
 def percentile_from_value(value, mean, std):
@@ -15,12 +12,89 @@ def percentile_from_value(value, mean, std):
     percentile = 100 * (0.5 * (1 + math.erf(z / math.sqrt(2))))
     return int(max(1, min(99, round(percentile))))
 
+
 def load_benchmark(age, position):
     path = Path(__file__).parent / "data" / "age_position_benchmarks.json"
+    if not path.exists():
+        return None
+
     data = json.loads(path.read_text())
     age_key = f"Sub-{age}"
     age_data = data.get(age_key, {})
+    if not age_data:
+        return None
+
     return age_data.get(position.strip()) or next(iter(age_data.values()))
+
+
+def track_manual_player(cap, total_frames, fps, selected_x, selected_y):
+    """
+    Tracking real ligero usando Lucas-Kanade Optical Flow.
+    selected_x/selected_y deben venir normalizados 0..1 desde Android.
+    Devuelve puntos normalizados del jugador a lo largo del vídeo.
+    """
+    if selected_x < 0 or selected_y < 0:
+        return []
+
+    cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
+
+    ok, first = cap.read()
+    if not ok:
+        return []
+
+    h, w = first.shape[:2]
+    x = float(selected_x) * w
+    y = float(selected_y) * h
+
+    prev_gray = cv2.cvtColor(first, cv2.COLOR_BGR2GRAY)
+
+    p0 = np.array([[[x, y]]], dtype=np.float32)
+    points = []
+
+    step = max(int(fps * 0.8), 1)
+    max_points = 80
+
+    frame_index = 0
+
+    while True:
+        target = frame_index + step
+        if target >= total_frames:
+            break
+
+        cap.set(cv2.CAP_PROP_POS_FRAMES, target)
+        ok, frame = cap.read()
+        if not ok:
+            break
+
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+
+        p1, st, err = cv2.calcOpticalFlowPyrLK(
+            prev_gray,
+            gray,
+            p0,
+            None,
+            winSize=(31, 31),
+            maxLevel=3,
+            criteria=(cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 20, 0.03),
+        )
+
+        if p1 is None or st is None or st[0][0] != 1:
+            break
+
+        nx = float(p1[0][0][0]) / w
+        ny = float(p1[0][0][1]) / h
+
+        if 0 <= nx <= 1 and 0 <= ny <= 1:
+            points.append((round(nx, 3), round(ny, 3)))
+
+        p0 = p1
+        prev_gray = gray
+        frame_index = target
+
+        if len(points) >= max_points:
+            break
+
+    return points
 
 
 def analyze_video_file(
@@ -31,6 +105,8 @@ def analyze_video_file(
     position: str,
     dominant_foot: str,
     level: str,
+    selected_x: float = -1.0,
+    selected_y: float = -1.0,
 ):
     path = Path(video_path)
     cap = cv2.VideoCapture(str(path))
@@ -45,6 +121,7 @@ def analyze_video_file(
     duration = total_frames / fps if fps else 0
 
     sample_every = max(int(fps * 8), 1)
+
     prev_gray = None
     motion_scores = []
     brightness_scores = []
@@ -53,6 +130,8 @@ def analyze_video_file(
     frame_index = 0
     processed_samples = 0
     max_samples = 45
+
+    cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
 
     while True:
         ok, frame = cap.read()
@@ -72,45 +151,37 @@ def analyze_video_file(
 
             prev_gray = gray
             processed_samples += 1
+
             if processed_samples >= max_samples:
                 break
 
         frame_index += 1
 
-    cap.release()
-
     avg_motion = float(np.mean(motion_scores)) if motion_scores else 0
     avg_brightness = float(np.mean(brightness_scores)) if brightness_scores else 0
     avg_sharpness = float(np.mean(sharpness_scores)) if sharpness_scores else 0
+
+    cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
+    heat_points = track_manual_player(
+        cap=cap,
+        total_frames=total_frames,
+        fps=fps,
+        selected_x=float(selected_x),
+        selected_y=float(selected_y),
+    )
+
+    cap.release()
+
+    tracking_active = len(heat_points) >= 5
 
     physical = min(10, max(4, 5.5 + avg_motion / 8))
     technical = min(10, max(4, 6.0 + avg_sharpness / 350))
     tactical = round(min(9.2, max(4.8, 5.8 + avg_motion / 22)), 1)
     decision = round(min(9.0, max(4.7, 5.7 + avg_sharpness / 5000)), 1)
-    global_score = round((physical + technical + tactical + decision) / 4, 1)
 
-    if avg_motion > 18:
-        intensity_text = "alta"
-    elif avg_motion > 10:
-        intensity_text = "media"
-    else:
-        intensity_text = "baja"
-
-    if avg_sharpness < 80:
-        quality_note = "La imagen tiene poca nitidez; el análisis técnico debe validarse manualmente."
-    else:
-        quality_note = "La calidad de imagen permite una lectura básica del comportamiento del jugador."
-
-    benchmark = load_benchmark(age, position)
-
-    percentiles = {
-        "technical": percentile_from_value(technical, benchmark["technical"]["mean"], benchmark["technical"]["std"]),
-        "tactical": percentile_from_value(tactical, benchmark["tactical"]["mean"], benchmark["tactical"]["std"]),
-        "physical": percentile_from_value(physical, benchmark["physical"]["mean"], benchmark["physical"]["std"]),
-        "decision_making": percentile_from_value(decision, benchmark["decision_making"]["mean"], benchmark["decision_making"]["std"]),
-        "intensity": percentile_from_value(avg_motion, benchmark["intensity"]["mean"], benchmark["intensity"]["std"]),
-        "video_quality": percentile_from_value(avg_sharpness, benchmark["sharpness"]["mean"], benchmark["sharpness"]["std"])
-    }
+    if tracking_active:
+        physical = min(10, physical + 0.4)
+        tactical = min(10, tactical + 0.3)
 
     global_score = round(
         technical * 0.25 +
@@ -120,6 +191,42 @@ def analyze_video_file(
         1
     )
 
+    if avg_motion > 18:
+        intensity_text = "alta"
+    elif avg_motion > 10:
+        intensity_text = "media"
+    else:
+        intensity_text = "baja"
+
+    benchmark = load_benchmark(age, position)
+
+    if benchmark:
+        percentiles = {
+            "technical": percentile_from_value(technical, benchmark["technical"]["mean"], benchmark["technical"]["std"]),
+            "tactical": percentile_from_value(tactical, benchmark["tactical"]["mean"], benchmark["tactical"]["std"]),
+            "physical": percentile_from_value(physical, benchmark["physical"]["mean"], benchmark["physical"]["std"]),
+            "decision_making": percentile_from_value(decision, benchmark["decision_making"]["mean"], benchmark["decision_making"]["std"]),
+            "intensity": percentile_from_value(avg_motion, benchmark["intensity"]["mean"], benchmark["intensity"]["std"]),
+            "video_quality": percentile_from_value(avg_sharpness, benchmark["sharpness"]["mean"], benchmark["sharpness"]["std"]),
+        }
+    else:
+        percentiles = {
+            "technical": int(technical * 10),
+            "tactical": int(tactical * 10),
+            "physical": int(physical * 10),
+            "decision_making": int(decision * 10),
+            "intensity": int(min(99, avg_motion * 4)),
+            "video_quality": int(min(99, avg_sharpness / 60)),
+        }
+
+    heatmap_encoded = ";".join([f"{x}:{y}" for x, y in heat_points])
+
+    confidence = 55
+    confidence += 10 if benchmark else 0
+    confidence += 15 if tracking_active else 0
+    confidence += 10 if avg_sharpness > 500 else 0
+    confidence = min(95, confidence)
+
     return {
         "player_name": player_name,
         "age": age,
@@ -128,25 +235,24 @@ def analyze_video_file(
         "reference_group": f"Sub-{age} · {position}",
 
         "scores": {
-            "technical": round(technical,1),
-            "tactical": round(tactical,1),
-            "physical": round(physical,1),
-            "decision_making": round(decision,1),
-            "global_score": round(global_score,1)
+            "technical": round(technical, 1),
+            "tactical": round(tactical, 1),
+            "physical": round(physical, 1),
+            "decision_making": round(decision, 1),
+            "global_score": round(global_score, 1),
         },
 
         "strengths": [
-            f"Percentil físico estimado: {percentiles['physical']}",
-            f"Percentil de intensidad: {percentiles['intensity']}",
-            f"Calidad del vídeo: percentil {percentiles['video_quality']}",
-            "Identificación solicitada mediante dorsal y color de camiseta."
+            f"Intensidad competitiva {intensity_text}.",
+            f"Percentil físico estimado: {percentiles['physical']}.",
+            f"Percentil técnico estimado: {percentiles['technical']}.",
+            "Tracking manual activado." if tracking_active else "Análisis visual sin tracking estable.",
         ],
 
         "improvements": [
-            "La valoración técnica necesita detección automática de acciones con balón.",
-            "La toma de decisión requiere detectar presión, orientación y opciones de pase.",
-            "Para precisión profesional hay que integrar tracking individual y eventos.",
-            "La comparativa actual usa base local inicial; ampliar con Wyscout/Hudl requiere licencia."
+            "Usar plano amplio y estable para mejorar tracking.",
+            "Marcar manualmente al jugador en un frame donde se vea completo.",
+            "Añadir detección automática de eventos: pase, conducción, pérdida y recuperación.",
         ],
 
         "training_tasks": [
@@ -154,31 +260,18 @@ def analyze_video_file(
             f"Juego de posición adaptado a {position}.",
             "Transición tras pérdida con reacción inmediata.",
             "Control orientado + pase bajo presión.",
-            "Finalización o pase clave tras conducción."
         ],
 
         "scouting_summary":
             f"Vídeo analizado: {duration/60:.1f} minutos. "
             f"Intensidad detectada: {intensity_text}. "
-            f"Comparado con referencia Sub-{age} para {position}, "
-            f"el jugador queda en percentil técnico {percentiles['technical']}, "
-            f"táctico {percentiles['tactical']}, físico {percentiles['physical']} "
-            f"y decisión {percentiles['decision_making']}. "
-            f"Estos percentiles son comparativos iniciales y deben reforzarse con bases licenciadas "
-            f"como Wyscout/Hudl para alcanzar precisión profesional.",
+            f"Movimiento medio: {avg_motion:.1f}. "
+            f"Tracking manual: {'activo' if tracking_active else 'no estable'}. "
+            f"Comparativa Sub-{age} para {position}: "
+            f"técnica P{percentiles['technical']}, táctica P{percentiles['tactical']}, "
+            f"físico P{percentiles['physical']} y decisión P{percentiles['decision_making']}.",
 
-        "confidence": round(
-            min(
-                95,
-                OpenFootballDataProvider().confidence_boost(
-                    has_video_metrics=True,
-                    has_age_benchmark=True,
-                    has_tracking=False,
-                    has_events=False
-                ) + WyscoutHudlProvider().confidence_boost()
-            ),
-            1
-        ),
+        "confidence": round(confidence, 1),
 
         "notes": [
             f"Duración: {duration/60:.1f} min",
@@ -186,13 +279,15 @@ def analyze_video_file(
             f"FPS: {fps:.1f}",
             f"Movimiento medio: {avg_motion:.1f}",
             f"Nitidez: {avg_sharpness:.1f}",
+            f"Tracking points: {len(heat_points)}",
+            f"HEATMAP_POINTS={heatmap_encoded}",
             f"Percentil técnico: {percentiles['technical']}",
             f"Percentil táctico: {percentiles['tactical']}",
             f"Percentil físico: {percentiles['physical']}",
             f"Percentil decisión: {percentiles['decision_making']}",
-            "Conector Wyscout/Hudl preparado conceptualmente, pendiente de API key/licencia."
-        ]
+        ],
     }
+
 
 class MockAnalysisEngine:
     def analyze(self, video_path: str, player):
@@ -204,4 +299,6 @@ class MockAnalysisEngine:
             position=player.position,
             dominant_foot=player.dominant_foot,
             level=player.level,
+            selected_x=float(getattr(player, "selected_x", -1.0)),
+            selected_y=float(getattr(player, "selected_y", -1.0)),
         )
