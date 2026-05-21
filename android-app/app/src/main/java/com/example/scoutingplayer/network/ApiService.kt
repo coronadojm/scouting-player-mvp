@@ -26,7 +26,8 @@ interface ApiService {
         @Part("shirt_color") shirtColor: RequestBody,
         @Part("identification_mode") identificationMode: RequestBody,
         @Part("selected_x") selectedX: RequestBody,
-        @Part("selected_y") selectedY: RequestBody
+        @Part("selected_y") selectedY: RequestBody,
+        @Part("frame_percent") framePercent: RequestBody
     ): AnalysisJobStartResponse
 
     @GET("/analysis/video/status/{jobId}")
@@ -49,6 +50,7 @@ interface ApiService {
         @Part("shirt_color") shirtColor: RequestBody,
         @Part("identification_mode") identificationMode: RequestBody,
         @Part("selected_x") selectedX: RequestBody,
-        @Part("selected_y") selectedY: RequestBody
+        @Part("selected_y") selectedY: RequestBody,
+        @Part("frame_percent") framePercent: RequestBody
     ): AnalysisReport
 }

@@ -27,7 +27,7 @@ def load_benchmark(age, position):
     return age_data.get(position.strip()) or next(iter(age_data.values()))
 
 
-def track_manual_player(cap, total_frames, fps, selected_x, selected_y):
+def track_manual_player(cap, total_frames, fps, selected_x, selected_y, frame_percent=25):
     """
     Tracking real ligero usando Lucas-Kanade Optical Flow.
     selected_x/selected_y deben venir normalizados 0..1 desde Android.
@@ -36,7 +36,10 @@ def track_manual_player(cap, total_frames, fps, selected_x, selected_y):
     if selected_x < 0 or selected_y < 0:
         return []
 
-    cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
+    start_frame = int(total_frames * float(frame_percent) / 100)
+    start_frame = max(0, min(start_frame, max(total_frames - 1, 0)))
+
+    cap.set(cv2.CAP_PROP_POS_FRAMES, start_frame)
 
     ok, first = cap.read()
     if not ok:
@@ -54,7 +57,7 @@ def track_manual_player(cap, total_frames, fps, selected_x, selected_y):
     step = max(int(fps * 2.5), 1)
     max_points = 25
 
-    frame_index = 0
+    frame_index = start_frame
 
     while True:
         target = frame_index + step
@@ -107,6 +110,7 @@ def analyze_video_file(
     level: str,
     selected_x: float = -1.0,
     selected_y: float = -1.0,
+    frame_percent: float = 25.0,
 ):
     path = Path(video_path)
     cap = cv2.VideoCapture(str(path))
@@ -168,6 +172,7 @@ def analyze_video_file(
         fps=fps,
         selected_x=float(selected_x),
         selected_y=float(selected_y),
+        frame_percent=float(frame_percent),
     )
 
     cap.release()
@@ -301,4 +306,5 @@ class MockAnalysisEngine:
             level=player.level,
             selected_x=float(getattr(player, "selected_x", -1.0)),
             selected_y=float(getattr(player, "selected_y", -1.0)),
+            frame_percent=float(getattr(player, "frame_percent", 25.0)),
         )

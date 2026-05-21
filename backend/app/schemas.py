@@ -13,6 +13,7 @@ class PlayerCreate(BaseModel):
     identification_mode: str = "Dorsal + selección manual"
     selected_x: float = -1.0
     selected_y: float = -1.0
+    frame_percent: float = 25.0
     level: str
 
 

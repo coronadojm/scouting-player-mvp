@@ -3,7 +3,9 @@ package com.example.scoutingplayer
 import android.graphics.Bitmap
 import android.media.MediaMetadataRetriever
 import android.net.Uri
+import android.net.wifi.WifiManager
 import android.os.Bundle
+import android.view.WindowManager
 import android.os.PowerManager
 import android.provider.OpenableColumns
 import androidx.activity.ComponentActivity
@@ -35,6 +37,7 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.example.scoutingplayer.model.AnalysisReport
 import com.example.scoutingplayer.network.NetworkModule
 import kotlinx.coroutines.Dispatchers
@@ -57,6 +60,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         setContent {
             MaterialTheme(
                 colorScheme = darkColorScheme(
@@ -106,6 +110,9 @@ fun ScoutingApp() {
     var report by remember { mutableStateOf<AnalysisReport?>(null) }
     var loading by remember { mutableStateOf(false) }
     var progress by remember { mutableStateOf(0f) }
+    var elapsedSeconds by remember { mutableStateOf(0) }
+    var estimatedSeconds by remember { mutableStateOf<Int?>(0) }
+    var analysisStage by remember { mutableStateOf("Preparando análisis...") }
     var error by remember { mutableStateOf<String?>(null) }
     var showReportPage by remember { mutableStateOf(false) }
 
@@ -235,7 +242,7 @@ fun ScoutingApp() {
                                         offsetY = 0f
                                     },
                                     modifier = Modifier.weight(1f)
-                                ) { Text("$pct%") }
+                                ) { Text("${pct}%", maxLines = 1, fontSize = 16.sp, fontWeight = FontWeight.Bold) }
                             }
                         }
 
@@ -303,6 +310,13 @@ fun ScoutingApp() {
                             )
                             wakeLock.acquire(30 * 60 * 1000L)
 
+                            val wifiManager = context.applicationContext.getSystemService(android.content.Context.WIFI_SERVICE) as WifiManager
+                            val wifiLock = wifiManager.createWifiLock(
+                                WifiManager.WIFI_MODE_FULL_HIGH_PERF,
+                                "ScoutingPlayer:WifiLock"
+                            )
+                            wifiLock.acquire()
+
                             loading = true
                             progress = 0f
                             error = null
@@ -341,7 +355,8 @@ fun ScoutingApp() {
                                                 shirtColor = part(shirtColor),
                                                 identificationMode = part(identificationMode),
                                                 selectedX = part((selectedPlayerX ?: -1f).toString()),
-                                                selectedY = part((selectedPlayerY ?: -1f).toString())
+                                                selectedY = part((selectedPlayerY ?: -1f).toString()),
+                                                framePercent = part(framePercent.toString())
                                             )
 
                                             var finalReport: AnalysisReport? = null
@@ -379,6 +394,7 @@ fun ScoutingApp() {
                                     error = e.message ?: "Error desconocido"
                                 } finally {
                                     if (wakeLock.isHeld) wakeLock.release()
+                                    if (wifiLock.isHeld) wifiLock.release()
                                     loading = false
                                 }
                             }
@@ -388,8 +404,12 @@ fun ScoutingApp() {
                     }
 
                     if (loading) {
-                        LinearProgressIndicator(progress = { progress }, modifier = Modifier.fillMaxWidth())
-                        Text("Analizando vídeo ${(progress * 100).toInt()}%", color = Color.White)
+                        AnalysisProgressCard(
+                            progress = progress,
+                            elapsedSeconds = elapsedSeconds,
+                            estimatedSeconds = estimatedSeconds,
+                            stage = analysisStage
+                        )
                     }
 
                     error?.let {
@@ -423,18 +443,6 @@ fun ReportDashboardPage(report: AnalysisReport, onBack: () -> Unit, onNew: () ->
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            Button(onClick = onBack, modifier = Modifier.weight(1f)) {
-                Text("Cerrar")
-            }
-            Button(onClick = onNew, modifier = Modifier.weight(1f)) {
-                Text("Nueva evaluación")
-            }
-        }
-
         Text("INFORME SCOUTING", color = Color(0xFF00E676), fontWeight = FontWeight.Bold)
         Text(report.player_name, style = MaterialTheme.typography.headlineLarge, color = Color.White, fontWeight = FontWeight.Bold)
         Text(report.reference_group, color = Color.LightGray)
@@ -468,6 +476,18 @@ fun ReportDashboardPage(report: AnalysisReport, onBack: () -> Unit, onNew: () ->
                 Text("CONFIANZA", color = Color.White, fontWeight = FontWeight.Bold)
                 LinearProgressIndicator(progress = { (report.confidence / 100).toFloat() }, modifier = Modifier.fillMaxWidth(), color = Color(0xFF00E676))
                 Text("${report.confidence.toInt()}%", color = Color(0xFF00E676), fontWeight = FontWeight.Bold)
+            }
+        }
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Button(onClick = onBack, modifier = Modifier.weight(1f)) {
+                Text("Cerrar")
+            }
+            Button(onClick = onNew, modifier = Modifier.weight(1f)) {
+                Text("Nuevo análisis")
             }
         }
     }
@@ -757,6 +777,108 @@ fun ActionsCard() {
 }
 
 
+
+
+
+@Composable
+fun AnalysisProgressCard(
+    progress: Float,
+    elapsedSeconds: Int,
+    estimatedSeconds: Int?,
+    stage: String
+) {
+    val percent = (progress * 100).toInt().coerceIn(1, 100)
+    val elapsedMin = elapsedSeconds / 60
+    val elapsedSec = elapsedSeconds % 60
+    val remaining = estimatedSeconds ?: 0
+    val remMin = remaining / 60
+    val remSec = remaining % 60
+
+    Card(
+        colors = CardDefaults.cardColors(containerColor = Color(0xFF07100D)),
+        shape = RoundedCornerShape(22.dp),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(
+            modifier = Modifier.padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Text(
+                "PROGRESO DEL ANÁLISIS",
+                color = Color.White,
+                fontWeight = FontWeight.Bold,
+                fontSize = 17.sp
+            )
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                ProgressMiniBox("Progreso", "$percent%")
+                ProgressMiniBox("Tiempo", "%02d:%02d".format(elapsedMin, elapsedSec))
+                ProgressMiniBox("Restante", "%02d:%02d".format(remMin, remSec))
+            }
+
+            LinearProgressIndicator(
+                progress = { progress.coerceIn(0f, 1f) },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(12.dp),
+                color = Color(0xFF00E676),
+                trackColor = Color(0xFF303630)
+            )
+
+            Text(
+                stage,
+                color = Color.White,
+                fontWeight = FontWeight.Bold,
+                fontSize = 15.sp
+            )
+
+            CompactStep("1. Vídeo recibido", percent >= 10)
+            CompactStep("2. Extrayendo frames", percent >= 25)
+            CompactStep("3. Movimiento e intensidad", percent >= 45)
+            CompactStep("4. Tracking del jugador", percent >= 65)
+            CompactStep("5. Informe profesional", percent >= 90)
+
+            Text(
+                "Puedes bloquear la pantalla; el análisis continuará.",
+                color = Color(0xFFB9F6CA),
+                fontSize = 13.sp
+            )
+        }
+    }
+}
+
+@Composable
+fun ProgressMiniBox(title: String, value: String) {
+    Column {
+        Text(title, color = Color.LightGray, fontSize = 12.sp)
+        Text(value, color = Color(0xFF00E676), fontWeight = FontWeight.Bold, fontSize = 21.sp)
+    }
+}
+
+@Composable
+fun CompactStep(text: String, done: Boolean) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text(
+            if (done) "✓ $text" else "○ $text",
+            color = if (done) Color(0xFF00E676) else Color.LightGray,
+            fontSize = 13.sp,
+            modifier = Modifier.weight(1f)
+        )
+
+        Text(
+            if (done) "OK" else "Pend.",
+            color = if (done) Color(0xFF00E676) else Color.Gray,
+            fontSize = 13.sp
+        )
+    }
+}
+
 fun android.content.Context.getFileName(uri: Uri): String? {
     contentResolver.query(uri, null, null, null, null)?.use { cursor ->
         val nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
@@ -764,7 +886,6 @@ fun android.content.Context.getFileName(uri: Uri): String? {
     }
     return null
 }
-
 
 
 

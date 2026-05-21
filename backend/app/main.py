@@ -120,6 +120,7 @@ async def start_video_analysis(
     identification_mode: str = Form("Color camiseta + dorsal"),
     selected_x: float = Form(-1.0),
     selected_y: float = Form(-1.0),
+    frame_percent: float = Form(25.0),
 ):
     job_id = str(uuid.uuid4())
 
@@ -141,6 +142,7 @@ async def start_video_analysis(
         identification_mode=identification_mode,
         selected_x=selected_x,
         selected_y=selected_y,
+        frame_percent=frame_percent,
     )
 
     JOBS[job_id] = {
@@ -203,6 +205,7 @@ async def analyze_video(
     identification_mode: str = Form("Color camiseta + dorsal"),
     selected_x: float = Form(-1.0),
     selected_y: float = Form(-1.0),
+    frame_percent: float = Form(25.0),
 ):
     suffix = Path(video.filename or "video.mp4").suffix or ".mp4"
     saved_path = UPLOAD_DIR / f"{uuid.uuid4()}{suffix}"
@@ -222,6 +225,7 @@ async def analyze_video(
         identification_mode=identification_mode,
         selected_x=selected_x,
         selected_y=selected_y,
+        frame_percent=frame_percent,
     )
 
     return engine.analyze(video_path=str(saved_path), player=player)
