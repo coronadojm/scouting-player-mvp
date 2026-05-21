@@ -48,7 +48,7 @@ def update_job(job_id: str, data: dict):
 
 @app.get("/health")
 async def health():
-    return {"status": "ok"}
+    return {"status": "ok", "version": "segments_v1"}
 
 
 @app.post("/players")
