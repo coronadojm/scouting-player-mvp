@@ -4,7 +4,6 @@ import math
 import numpy as np
 from pathlib import Path
 from app.vision.player_tracker import track_selected_player
-from app.vision.player_tracker import track_players_video
 
 
 def percentile_from_value(value, mean, std):
@@ -173,7 +172,7 @@ def analyze_video_file(
 
     cap.release()
 
-    tracking_result = track_players_video(
+    tracking_result = track_selected_player(
         video_path=str(path),
         selected_x=float(selected_x),
         selected_y=float(selected_y),
@@ -181,8 +180,8 @@ def analyze_video_file(
         max_seconds=int(os.getenv("SEGMENT_ANALYSIS_SECONDS", "20")),
     )
 
-    heat_points = tracking_result["tracking_points"]
-    tracking_active = tracking_result["tracking_active"]
+    heat_points = tracking_result.get("tracking_points", tracking_result.get("points", []))
+    tracking_active = tracking_result.get("tracking_active", tracking_result.get("active", False))
 
     try:
         from app.vision.ball_tracker import track_ball_video
