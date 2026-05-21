@@ -4,6 +4,7 @@ import android.graphics.Bitmap
 import android.media.MediaMetadataRetriever
 import android.net.Uri
 import android.os.Bundle
+import android.os.PowerManager
 import android.provider.OpenableColumns
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -287,6 +288,14 @@ fun ScoutingApp() {
                         modifier = Modifier.fillMaxWidth(),
                         onClick = {
                             val uri = selectedVideoUri ?: return@Button
+
+                            val powerManager = context.getSystemService(android.content.Context.POWER_SERVICE) as PowerManager
+                            val wakeLock = powerManager.newWakeLock(
+                                PowerManager.PARTIAL_WAKE_LOCK,
+                                "ScoutingPlayer:AnalysisWakeLock"
+                            )
+                            wakeLock.acquire(30 * 60 * 1000L)
+
                             loading = true
                             progress = 0f
                             error = null
@@ -330,6 +339,7 @@ fun ScoutingApp() {
                                 } catch (e: Exception) {
                                     error = e.message ?: "Error desconocido"
                                 } finally {
+                                    if (wakeLock.isHeld) wakeLock.release()
                                     loading = false
                                 }
                             }
@@ -403,7 +413,7 @@ fun ReportDashboardPage(report: AnalysisReport, onBack: () -> Unit, onNew: () ->
         CompareCard(report)
         StatsCard(report)
         SectionCard("RESUMEN DEL ANÁLISIS", report.scouting_summary)
-        HeatMapCard()
+        HeatMapCard(report)
         RadarChart(report)
         BulletSection("FORTALEZAS", report.strengths, true)
         BulletSection("A MEJORAR", report.improvements, false)
@@ -552,43 +562,81 @@ fun StatBox(icon: String, value: String, label: String, modifier: Modifier = Mod
     }
 }
 
+
 @Composable
-fun HeatMapCard() {
-    Card(colors = CardDefaults.cardColors(containerColor = Color(0xFF07100D)), shape = RoundedCornerShape(24.dp)) {
+fun HeatMapCard(report: AnalysisReport) {
+    val encoded = report.notes
+        .firstOrNull { it.startsWith("HEATMAP_POINTS=") }
+        ?.removePrefix("HEATMAP_POINTS=")
+        ?: ""
+
+    val points = encoded.split(";")
+        .mapNotNull {
+            val parts = it.split(":")
+            if (parts.size == 2) {
+                val x = parts[0].toFloatOrNull()
+                val y = parts[1].toFloatOrNull()
+                if (x != null && y != null) x to y else null
+            } else null
+        }
+
+    Card(
+        colors = CardDefaults.cardColors(containerColor = Color(0xFF07100D)),
+        shape = RoundedCornerShape(24.dp)
+    ) {
         Column(modifier = Modifier.padding(18.dp)) {
-            Text("MAPA DE CALOR", color = Color.White, fontWeight = FontWeight.Bold)
+            Text("MAPA DE CALOR REAL", color = Color.White, fontWeight = FontWeight.Bold)
 
             Spacer(Modifier.height(12.dp))
 
-            Canvas(modifier = Modifier.fillMaxWidth().height(210.dp)) {
+            Canvas(modifier = Modifier.fillMaxWidth().height(220.dp)) {
                 val w = size.width
                 val h = size.height
 
-                drawRect(Color(0xFF073015), size = Size(w, h))
-                drawRect(Color.White, style = Stroke(width = 3f))
-                drawLine(Color.White, Offset(w / 2, 0f), Offset(w / 2, h), strokeWidth = 2f)
-                drawCircle(Color.White, radius = h * 0.16f, center = Offset(w / 2, h / 2), style = Stroke(width = 2f))
+                drawRect(Color(0xFF073015), size = androidx.compose.ui.geometry.Size(w, h))
+                drawRect(Color.White, style = androidx.compose.ui.graphics.drawscope.Stroke(width = 3f))
+                drawLine(Color.White, androidx.compose.ui.geometry.Offset(w / 2, 0f), androidx.compose.ui.geometry.Offset(w / 2, h), strokeWidth = 2f)
+                drawCircle(Color.White, radius = h * 0.16f, center = androidx.compose.ui.geometry.Offset(w / 2, h / 2), style = androidx.compose.ui.graphics.drawscope.Stroke(width = 2f))
 
-                drawRect(Color.White, topLeft = Offset(0f, h * 0.25f), size = Size(w * 0.18f, h * 0.5f), style = Stroke(width = 2f))
-                drawRect(Color.White, topLeft = Offset(w * 0.82f, h * 0.25f), size = Size(w * 0.18f, h * 0.5f), style = Stroke(width = 2f))
-
-                val spots = listOf(
-                    Offset(w * 0.35f, h * 0.45f) to 95f,
-                    Offset(w * 0.42f, h * 0.58f) to 75f,
-                    Offset(w * 0.28f, h * 0.60f) to 65f,
-                    Offset(w * 0.55f, h * 0.48f) to 45f,
-                    Offset(w * 0.22f, h * 0.42f) to 35f
+                drawRect(
+                    Color.White,
+                    topLeft = androidx.compose.ui.geometry.Offset(0f, h * 0.25f),
+                    size = androidx.compose.ui.geometry.Size(w * 0.18f, h * 0.5f),
+                    style = androidx.compose.ui.graphics.drawscope.Stroke(width = 2f)
                 )
 
-                spots.forEach { (c, r) ->
-                    drawCircle(Color(0x66FF3D00), radius = r, center = c)
-                    drawCircle(Color(0x88FFD600), radius = r * 0.65f, center = c)
-                    drawCircle(Color(0x9900E676), radius = r * 0.35f, center = c)
+                drawRect(
+                    Color.White,
+                    topLeft = androidx.compose.ui.geometry.Offset(w * 0.82f, h * 0.25f),
+                    size = androidx.compose.ui.geometry.Size(w * 0.18f, h * 0.5f),
+                    style = androidx.compose.ui.graphics.drawscope.Stroke(width = 2f)
+                )
+
+                if (points.isNotEmpty()) {
+                    points.forEach { (px, py) ->
+                        val cx = px.coerceIn(0f, 1f) * w
+                        val cy = py.coerceIn(0f, 1f) * h
+
+                        drawCircle(Color(0x55FF3D00), radius = 42f, center = androidx.compose.ui.geometry.Offset(cx, cy))
+                        drawCircle(Color(0x77FFD600), radius = 25f, center = androidx.compose.ui.geometry.Offset(cx, cy))
+                        drawCircle(Color(0xAA00E676), radius = 11f, center = androidx.compose.ui.geometry.Offset(cx, cy))
+                    }
                 }
             }
 
             Spacer(Modifier.height(10.dp))
-            Text("Zonas de mayor participación estimada del jugador.", color = Color.LightGray)
+
+            if (points.isEmpty()) {
+                Text(
+                    "No hay tracking real. Marca manualmente al jugador en el frame para generar mapa real.",
+                    color = Color(0xFFFFCC80)
+                )
+            } else {
+                Text(
+                    "Mapa generado con ${points.size} posiciones reales seguidas desde el punto marcado.",
+                    color = Color.LightGray
+                )
+            }
         }
     }
 }

@@ -51,8 +51,8 @@ def track_manual_player(cap, total_frames, fps, selected_x, selected_y):
     p0 = np.array([[[x, y]]], dtype=np.float32)
     points = []
 
-    step = max(int(fps * 0.8), 1)
-    max_points = 80
+    step = max(int(fps * 2.5), 1)
+    max_points = 25
 
     frame_index = 0
 
@@ -120,7 +120,7 @@ def analyze_video_file(
     height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT) or 0)
     duration = total_frames / fps if fps else 0
 
-    sample_every = max(int(fps * 8), 1)
+    sample_every = max(int(fps * 15), 1)
 
     prev_gray = None
     motion_scores = []
@@ -129,7 +129,7 @@ def analyze_video_file(
 
     frame_index = 0
     processed_samples = 0
-    max_samples = 45
+    max_samples = 18
 
     cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
 
@@ -139,7 +139,7 @@ def analyze_video_file(
             break
 
         if frame_index % sample_every == 0:
-            resized = cv2.resize(frame, (160, 90))
+            resized = cv2.resize(frame, (120, 68))
             gray = cv2.cvtColor(resized, cv2.COLOR_BGR2GRAY)
 
             brightness_scores.append(float(np.mean(gray)))
