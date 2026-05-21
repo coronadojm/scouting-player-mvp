@@ -1,4 +1,5 @@
 import uuid
+import os
 import time
 import shutil
 from pathlib import Path
@@ -124,13 +125,16 @@ def run_analysis_job(job_id: str, saved_path: str, player: PlayerCreate):
 
         reports=[]
 
-        for index,segment in enumerate(segments):
+        max_segments = int(os.getenv("MAX_ANALYSIS_SEGMENTS", "3"))
+        segments_to_process = segments[:max_segments]
 
-            progress=78+int((index/max(1,len(segments)))*12)
+        for index,segment in enumerate(segments_to_process):
+
+            progress=78+int((index/max(1,len(segments_to_process)))*12)
 
             update_job(job_id,{
                 "progress":progress,
-                "stage":f"Analizando segmento {index+1}/{len(segments)}",
+                "stage":f"Analizando segmento {index+1}/{len(segments_to_process)} de {len(segments)} totales",
                 "segments_done":index+1
             })
 
@@ -145,6 +149,15 @@ def run_analysis_job(job_id: str, saved_path: str, player: PlayerCreate):
                 print(e)
 
         report=merge_reports(reports)
+
+        if isinstance(report, dict):
+            report["video_segments"] = {
+                "mode": "segmented_limited",
+                "segments_total": len(segments),
+                "segments_processed": len(reports),
+                "max_segments": max_segments,
+                "note": "Análisis por segmentos activado. Para 45 min completos, subir MAX_ANALYSIS_SEGMENTS en Render."
+            }
 
         if isinstance(report, dict):
             report["video_segments"] = {
