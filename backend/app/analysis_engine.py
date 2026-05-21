@@ -15,11 +15,15 @@ def percentile_from_value(value, mean, std):
 
 
 def load_benchmark(age, position):
-    path = Path(__file__).parent / "data" / "age_position_benchmarks.json"
+    open_path = Path(__file__).parent / "data" / "open_benchmarks.json"
+    path = open_path if open_path.exists() else Path(__file__).parent / "data" / "age_position_benchmarks.json"
     if not path.exists():
         return None
 
     data = json.loads(path.read_text())
+    if "benchmarks" in data:
+        data = data["benchmarks"]
+
     age_key = f"Sub-{age}"
     age_data = data.get(age_key, {})
     if not age_data:

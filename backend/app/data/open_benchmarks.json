@@ -1,0 +1,90 @@
+{
+  "sources": {
+    "statsbomb_open_data": true,
+    "metrica_sample_data": true,
+    "soccernet_connector": "prepared",
+    "wyscout_hudl": false
+  },
+  "benchmarks": {
+    "Sub-14": {
+      "Interior Izquierdo": {
+        "technical": {
+          "mean": 6.7,
+          "std": 0.9
+        },
+        "tactical": {
+          "mean": 6.4,
+          "std": 0.9
+        },
+        "physical": {
+          "mean": 6.8,
+          "std": 1.0
+        },
+        "decision_making": {
+          "mean": 6.2,
+          "std": 0.9
+        },
+        "intensity": {
+          "mean": 14.5,
+          "std": 3.5
+        },
+        "sharpness": {
+          "mean": 1800.0,
+          "std": 900.0
+        }
+      },
+      "Mediocentro": {
+        "technical": {
+          "mean": 6.9,
+          "std": 0.8
+        },
+        "tactical": {
+          "mean": 7.0,
+          "std": 0.8
+        },
+        "physical": {
+          "mean": 6.5,
+          "std": 0.9
+        },
+        "decision_making": {
+          "mean": 6.9,
+          "std": 0.8
+        },
+        "intensity": {
+          "mean": 13.5,
+          "std": 3.0
+        },
+        "sharpness": {
+          "mean": 1800.0,
+          "std": 900.0
+        }
+      },
+      "Lateral Derecho": {
+        "technical": {
+          "mean": 6.3,
+          "std": 0.9
+        },
+        "tactical": {
+          "mean": 6.5,
+          "std": 0.9
+        },
+        "physical": {
+          "mean": 7.2,
+          "std": 0.9
+        },
+        "decision_making": {
+          "mean": 6.1,
+          "std": 0.9
+        },
+        "intensity": {
+          "mean": 15.8,
+          "std": 3.8
+        },
+        "sharpness": {
+          "mean": 1800.0,
+          "std": 900.0
+        }
+      }
+    }
+  }
+}

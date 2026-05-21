@@ -1,5 +1,6 @@
 package com.example.scoutingplayer
 
+import android.content.Intent
 import android.graphics.Bitmap
 import android.media.MediaMetadataRetriever
 import android.net.Uri
@@ -38,8 +39,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
 import com.example.scoutingplayer.model.AnalysisReport
 import com.example.scoutingplayer.network.NetworkModule
+import com.example.scoutingplayer.service.AnalysisForegroundService
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -317,6 +320,11 @@ fun ScoutingApp() {
                             )
                             wifiLock.acquire()
 
+                            ContextCompat.startForegroundService(
+                                context,
+                                Intent(context, AnalysisForegroundService::class.java)
+                            )
+
                             loading = true
                             progress = 0f
                             error = null
@@ -364,7 +372,13 @@ fun ScoutingApp() {
                                             while (finalReport == null) {
                                                 kotlinx.coroutines.delay(1500)
 
-                                                val status = NetworkModule.api.getAnalysisStatus(job.job_id)
+                                                val status = try {
+                                                    NetworkModule.api.getAnalysisStatus(job.job_id)
+                                                } catch (e: Exception) {
+                                                    analysisStage = "Reconectando con el servidor..."
+                                                    kotlinx.coroutines.delay(3000)
+                                                    continue
+                                                }
 
                                                 progress = (status.progress / 100f).coerceIn(0f, 1f)
                                                 analysisStage = status.stage
@@ -396,6 +410,7 @@ fun ScoutingApp() {
                                 } finally {
                                     if (wakeLock.isHeld) wakeLock.release()
                                     if (wifiLock.isHeld) wifiLock.release()
+                                    context.stopService(Intent(context, AnalysisForegroundService::class.java))
                                     loading = false
                                 }
                             }
