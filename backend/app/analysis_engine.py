@@ -3,6 +3,7 @@ import json
 import math
 import numpy as np
 from pathlib import Path
+from app.vision.player_tracker import track_players_video
 
 
 def percentile_from_value(value, mean, std):
@@ -165,19 +166,18 @@ def analyze_video_file(
     avg_brightness = float(np.mean(brightness_scores)) if brightness_scores else 0
     avg_sharpness = float(np.mean(sharpness_scores)) if sharpness_scores else 0
 
-    cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
-    heat_points = track_manual_player(
-        cap=cap,
-        total_frames=total_frames,
-        fps=fps,
+    cap.release()
+
+    tracking_result = track_players_video(
+        video_path=str(path),
         selected_x=float(selected_x),
         selected_y=float(selected_y),
         frame_percent=float(frame_percent),
+        max_seconds=30,
     )
 
-    cap.release()
-
-    tracking_active = len(heat_points) >= 5
+    heat_points = tracking_result["tracking_points"]
+    tracking_active = tracking_result["tracking_active"]
 
     physical = min(10, max(4, 5.5 + avg_motion / 8))
     technical = min(10, max(4, 6.0 + avg_sharpness / 350))
@@ -251,7 +251,7 @@ def analyze_video_file(
             f"Intensidad competitiva {intensity_text}.",
             f"Percentil físico estimado: {percentiles['physical']}.",
             f"Percentil técnico estimado: {percentiles['technical']}.",
-            "Tracking manual activado." if tracking_active else "Análisis visual sin tracking estable.",
+            "Tracking YOLO + ByteTrack activado." if tracking_active else "Tracking automático no estable.",
         ],
 
         "improvements": [
@@ -284,6 +284,7 @@ def analyze_video_file(
             f"FPS: {fps:.1f}",
             f"Movimiento medio: {avg_motion:.1f}",
             f"Nitidez: {avg_sharpness:.1f}",
+            f"Tracking engine: YOLOv8n + ByteTrack",
             f"Tracking points: {len(heat_points)}",
             f"HEATMAP_POINTS={heatmap_encoded}",
             f"Percentil técnico: {percentiles['technical']}",

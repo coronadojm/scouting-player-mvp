@@ -4,3 +4,9 @@ python-multipart
 pydantic
 opencv-python-headless
 numpy
+ultralytics
+torch
+torchvision
+pandas
+scipy
+requests
