@@ -15,6 +15,9 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -151,7 +154,11 @@ fun ScoutingApp() {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFF080A09))
+            .background(Color.Black)
+            .statusBarsPadding()
+            .navigationBarsPadding()
+            .padding(horizontal = 12.dp)
+            .background(Color(0xFF080A09), RoundedCornerShape(22.dp))
             .verticalScroll(rememberScrollState())
     ) {
         Box(
@@ -375,7 +382,11 @@ fun ReportDashboardPage(report: AnalysisReport, onBack: () -> Unit, onNew: () ->
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFF080A09))
+            .background(Color.Black)
+            .statusBarsPadding()
+            .navigationBarsPadding()
+            .padding(horizontal = 12.dp)
+            .background(Color(0xFF080A09), RoundedCornerShape(22.dp))
             .verticalScroll(rememberScrollState())
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
