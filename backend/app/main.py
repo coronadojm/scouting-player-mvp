@@ -94,7 +94,31 @@ def run_analysis_job(job_id: str, saved_path: str, player: PlayerCreate):
             "estimated_remaining_seconds": 10,
         })
 
-        report = engine.analyze(video_path=saved_path, player=player)
+        try:
+            report = engine.analyze(video_path=saved_path, player=player)
+        except BaseException as e:
+            report = {
+                "player_name": player.name,
+                "status": "completed_with_fallback",
+                "summary": "El análisis pesado falló en Render, pero se generó un informe básico.",
+                "confidence": 35,
+                "tracking": {
+                    "player_points": [],
+                    "ball_points": [],
+                    "events": [],
+                    "statsbomb_events": [],
+                    "metrica_tracking": [],
+                    "soccernet_actions": [],
+                    "player_engine": "fallback",
+                    "ball_engine": "fallback",
+                    "ball_active": False
+                },
+                "notes": [
+                    "Render reinició o limitó el análisis pesado.",
+                    "Fallback activado para evitar bloqueo infinito.",
+                    f"Error: {str(e)}"
+                ]
+            }
 
         update_job(job_id, {
             "progress": 90,
