@@ -56,202 +56,93 @@ async def create_player(player: PlayerCreate):
     return player
 
 
+
 def run_analysis_job(job_id: str, saved_path: str, player: PlayerCreate):
     start = time.time()
 
     try:
-        update_job(job_id, {
-            "status": "running",
-            "progress": 10,
-            "stage": "Vídeo recibido. Preparando análisis rápido MVP. Máximo recomendado: 60 segundos.",
-            "elapsed_seconds": 0,
-            "estimated_remaining_seconds": 60,
-        "estimated_total_seconds": 90,
+        update_job(job_id,{
+            "status":"running",
+            "progress":10,
+            "stage":"Preparando análisis",
+            "elapsed_seconds":0,
+            "estimated_remaining_seconds":60,
+            "estimated_total_seconds":90
         })
 
-        time.sleep(0.05)
+        segments_dir = JOBS_DIR / job_id / "segments"
 
-        update_job(job_id, {
-            "progress": 25,
-            "stage": "Extrayendo frames del vídeo.",
-            "elapsed_seconds": int(time.time() - start),
-            "estimated_remaining_seconds": 45,
-        })
-
-        time.sleep(0.05)
-
-        update_job(job_id, {
-            "progress": 45,
-            "stage": "Calculando movimiento e intensidad.",
-            "elapsed_seconds": int(time.time() - start),
-            "estimated_remaining_seconds": 30,
-        })
-
-        time.sleep(0.05)
-
-        update_job(job_id, {
-            "progress": 70,
-            "stage": "Aplicando tracking manual/color-dorsal.",
-            "elapsed_seconds": int(time.time() - start),
-            "estimated_remaining_seconds": 10,
-        })
-
-        try:
-            segments_dir = JOBS_DIR / job_id / "segments"
-
-        update_job(job_id, {
-            "progress": 72,
-            "stage": "Dividiendo vídeo en segmentos de 60 segundos.",
-            "elapsed_seconds": int(time.time() - start),
-            "estimated_remaining_seconds": 30,
+        update_job(job_id,{
+            "progress":25,
+            "stage":"Dividiendo vídeo en segmentos"
         })
 
         segments = split_video_into_segments(
             video_path=saved_path,
             output_dir=str(segments_dir),
-            segment_seconds=60,
+            segment_seconds=60
         )
 
-        update_job(job_id, {
-            "progress": 78,
-            "stage": f"Vídeo dividido en {len(segments)} segmentos. Analizando primer segmento.",
-            "segments_total": len(segments),
-            "segments_done": 0,
-            "elapsed_seconds": int(time.time() - start),
-            "estimated_remaining_seconds": 20,
-        })
+        max_segments = int(
+            os.getenv(
+                "MAX_ANALYSIS_SEGMENTS",
+                "3"
+            )
+        )
 
-        from app.vision.segment_aggregator import merge_reports
+        segments = segments[:max_segments]
 
         reports=[]
 
-        max_segments = int(os.getenv("MAX_ANALYSIS_SEGMENTS", "3"))
-        analysis_mode = os.getenv("ANALYSIS_MODE", "fast")
-        segments_to_process = segments[:max_segments]
+        for index,segment in enumerate(segments):
 
-        partial_dir = JOBS_DIR / job_id / "partials"
-        partial_dir.mkdir(parents=True, exist_ok=True)
-
-        import json
-
-        for index,segment in enumerate(segments_to_process):
-
-            partial_path = partial_dir / f"segment_{index:04d}.json"
-
-            if partial_path.exists():
-                try:
-                    reports.append(json.loads(partial_path.read_text()))
-                    update_job(job_id,{
-                        "progress":78,
-                        "stage":f"Recuperado segmento {index+1}/{len(segments_to_process)} desde parcial",
-                        "segments_done": index + 1,
-                "segments_total": len(segments),
-                "segments_processing_limit": len(segments_to_process)
-                    })
-                    continue
-                except Exception:
-                    pass
-
-            progress = 78 + int(((index + 1) / max(1, len(segments_to_process))) * 12)
+            progress = 40 + int(
+                ((index+1)/max(1,len(segments)))*40
+            )
 
             update_job(job_id,{
                 "progress":progress,
-                "stage":f"Analizando segmento {index+1}/{len(segments_to_process)} de {len(segments)} totales. Modo: {analysis_mode}",
-                "segments_done": index + 1,
-                "segments_total": len(segments),
-                "segments_processing_limit": len(segments_to_process)
+                "stage":f"Analizando segmento {index+1}/{len(segments)}"
             })
 
             try:
-                r=engine.analyze(
+                report = engine.analyze(
                     video_path=segment,
                     player=player
                 )
 
-                if isinstance(r, dict):
-                    r["analysis_mode"] = analysis_mode
-                reports.append(r)
-
-                partial_path.write_text(
-                    json.dumps(r, default=str)
-                )
+                reports.append(report)
 
             except Exception as e:
                 print(e)
 
-        report=merge_reports(reports)
-
-        if isinstance(report, dict):
-            report["video_segments"] = {
-                "mode": "segmented_limited",
-                "segments_total": len(segments),
-                "segments_processed": len(reports),
-                "max_segments": max_segments,
-                "analysis_mode": analysis_mode,
-                "note": "Análisis por segmentos activado. Para 45 min completos, subir MAX_ANALYSIS_SEGMENTS en Render y mantener ANALYSIS_MODE=fast."
-            }
-
-        if isinstance(report, dict):
-            report["video_segments"] = {
-                "mode": "segmented_mvp",
-                "segment_seconds": 60,
-                "segments_total": len(segments),
-                "segments_analyzed": 1 if segments else 0,
-                "note": "MVP: analiza el primer segmento y deja preparado el flujo para partido completo."
-            }
-        except BaseException as e:
-            report = {
-                "player_name": player.name,
-                "status": "completed_with_fallback",
-                "summary": "El análisis pesado falló en Render, pero se generó un informe básico.",
-                "confidence": 35,
-                "tracking": {
-                    "player_points": [],
-                    "ball_points": [],
-                    "events": [],
-                    "statsbomb_events": [],
-                    "metrica_tracking": [],
-                    "soccernet_actions": [],
-                    "player_engine": "fallback",
-                    "ball_engine": "fallback",
-                    "ball_active": False
-                },
-                "notes": [
-                    "Render reinició o limitó el análisis pesado.",
-                    "Fallback activado para evitar bloqueo infinito.",
-                    f"Error: {str(e)}"
-                ]
-            }
-
-        update_job(job_id, {
-            "progress": 90,
-            "stage": "Generando informe profesional.",
-            "elapsed_seconds": int(time.time() - start),
-            "estimated_remaining_seconds": 5,
+        update_job(job_id,{
+            "progress":90,
+            "stage":"Generando informe"
         })
 
-        time.sleep(0.05)
+        final_report={
+            "reports":reports,
+            "segments_processed":len(reports)
+        }
 
-        update_job(job_id, {
-            "status": "done",
-            "progress": 100,
-            "stage": "Análisis completado.",
-            "elapsed_seconds": int(time.time() - start),
-            "estimated_remaining_seconds": 0,
-            "report": report,
+        update_job(job_id,{
+            "status":"done",
+            "progress":100,
+            "stage":"Análisis completado",
+            "report":final_report,
+            "elapsed_seconds":int(time.time()-start),
+            "estimated_remaining_seconds":0
         })
 
     except Exception as e:
-        update_job(job_id, {
-            "status": "failed",
-            "progress": 100,
-            "stage": "Error durante el análisis.",
-            "error": str(e),
-            "elapsed_seconds": int(time.time() - start),
-            "estimated_remaining_seconds": 0,
+
+        update_job(job_id,{
+            "status":"failed",
+            "progress":100,
+            "stage":"Error durante análisis",
+            "error":str(e)
         })
-
-
 @app.post("/analysis/video/start")
 async def start_video_analysis(
     
