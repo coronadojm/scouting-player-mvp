@@ -63,6 +63,7 @@ def run_analysis_job(job_id: str, saved_path: str, player: PlayerCreate):
             "stage": "Vídeo recibido. Preparando análisis.",
             "elapsed_seconds": 0,
             "estimated_remaining_seconds": 60,
+        "estimated_total_seconds": 90,
         })
 
         time.sleep(0.05)
@@ -203,7 +204,8 @@ async def video_analysis_status(job_id: str):
     if job.get("status") in ["done", "failed"]:
         remaining = 0
     else:
-        remaining = int(max(0, (elapsed / max(progress, 1)) * (100 - progress)))
+        total_estimated = int(job.get("estimated_total_seconds", 90))
+        remaining = max(0, total_estimated - elapsed)
 
     job["elapsed_seconds"] = elapsed
     job["estimated_remaining_seconds"] = remaining
