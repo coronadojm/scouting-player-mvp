@@ -15,3 +15,7 @@ android-app/gradlew.bat
 backend/uploads/
 __pycache__/
 *.pyc
+
+# Python cache
+__pycache__/
+*.py[cod]
