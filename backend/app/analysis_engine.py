@@ -184,21 +184,34 @@ def analyze_video_file(
     heat_points = tracking_result["tracking_points"]
     tracking_active = tracking_result["tracking_active"]
 
-    from app.vision.ball_tracker import track_ball_video
-    from app.vision.event_detector import detect_basic_events
-    from app.vision.exporters.statsbomb_like import export_events
-    from app.vision.exporters.metrica_like import export_tracking
-    from app.vision.exporters.soccernet_like import export_actions
+    try:
+        from app.vision.ball_tracker import track_ball_video
+        from app.vision.event_detector import detect_basic_events
+        from app.vision.exporters.statsbomb_like import export_events
+        from app.vision.exporters.metrica_like import export_tracking
+        from app.vision.exporters.soccernet_like import export_actions
 
-    ball_result = track_ball_video(
-        video_path=str(path),
-        max_seconds=30,
-    )
-    ball_points = ball_result.get("points", [])
-    events = detect_basic_events(heat_points, ball_points)
-    statsbomb_events = export_events(events)
-    metrica_tracking = export_tracking(heat_points, ball_points)
-    soccernet_actions = export_actions(events)
+        ball_result = track_ball_video(
+            video_path=str(path),
+            max_seconds=10,
+        )
+        ball_points = ball_result.get("points", [])
+        events = detect_basic_events(heat_points, ball_points)
+        statsbomb_events = export_events(events)
+        metrica_tracking = export_tracking(heat_points, ball_points)
+        soccernet_actions = export_actions(events)
+
+    except Exception as e:
+        ball_result = {
+            "engine": "disabled_fallback",
+            "active": False,
+            "error": str(e),
+        }
+        ball_points = []
+        events = []
+        statsbomb_events = []
+        metrica_tracking = []
+        soccernet_actions = []
 
     physical = min(10, max(4, 5.5 + avg_motion / 8))
     technical = min(10, max(4, 6.0 + avg_sharpness / 350))
