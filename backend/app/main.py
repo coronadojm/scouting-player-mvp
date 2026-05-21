@@ -412,3 +412,14 @@ def debug_analysis_version():
         ],
         "status": "ok"
     }
+
+
+@app.get("/debug/analysis-config")
+def debug_analysis_config():
+    return {
+        "max_analysis_segments": os.getenv("MAX_ANALYSIS_SEGMENTS", "3"),
+        "analysis_mode": os.getenv("ANALYSIS_MODE", "fast"),
+        "segment_analysis_seconds": os.getenv("SEGMENT_ANALYSIS_SECONDS", "20"),
+        "ball_analysis_seconds": os.getenv("BALL_ANALYSIS_SECONDS", "10"),
+        "status": "ok"
+    }
