@@ -143,18 +143,22 @@ def run_analysis_job(job_id: str, saved_path: str, player: PlayerCreate):
                     update_job(job_id,{
                         "progress":78,
                         "stage":f"Recuperado segmento {index+1}/{len(segments_to_process)} desde parcial",
-                        "segments_done":index+1
+                        "segments_done": index + 1,
+                "segments_total": len(segments),
+                "segments_processing_limit": len(segments_to_process)
                     })
                     continue
                 except Exception:
                     pass
 
-            progress=78+int((index/max(1,len(segments_to_process)))*12)
+            progress = 78 + int(((index + 1) / max(1, len(segments_to_process))) * 12)
 
             update_job(job_id,{
                 "progress":progress,
                 "stage":f"Analizando segmento {index+1}/{len(segments_to_process)} de {len(segments)} totales",
-                "segments_done":index+1
+                "segments_done": index + 1,
+                "segments_total": len(segments),
+                "segments_processing_limit": len(segments_to_process)
             })
 
             try:
