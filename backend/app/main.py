@@ -263,3 +263,20 @@ def debug_vision_modules():
         "soccernet_like": True,
         "status": "ok"
     }
+
+
+@app.get("/debug/analysis-version")
+def debug_analysis_version():
+    return {
+        "analysis_version": "yolo_bytetrack_ball_events_exporters_v1",
+        "features": [
+            "YOLO player tracking",
+            "ByteTrack player IDs",
+            "ball tracking heuristic",
+            "basic event detection",
+            "StatsBomb-like events",
+            "Metrica-like tracking",
+            "SoccerNet-like actions"
+        ],
+        "status": "ok"
+    }
