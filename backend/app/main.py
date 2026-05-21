@@ -128,7 +128,26 @@ def run_analysis_job(job_id: str, saved_path: str, player: PlayerCreate):
         max_segments = int(os.getenv("MAX_ANALYSIS_SEGMENTS", "3"))
         segments_to_process = segments[:max_segments]
 
+        partial_dir = JOBS_DIR / job_id / "partials"
+        partial_dir.mkdir(parents=True, exist_ok=True)
+
+        import json
+
         for index,segment in enumerate(segments_to_process):
+
+            partial_path = partial_dir / f"segment_{index:04d}.json"
+
+            if partial_path.exists():
+                try:
+                    reports.append(json.loads(partial_path.read_text()))
+                    update_job(job_id,{
+                        "progress":78,
+                        "stage":f"Recuperado segmento {index+1}/{len(segments_to_process)} desde parcial",
+                        "segments_done":index+1
+                    })
+                    continue
+                except Exception:
+                    pass
 
             progress=78+int((index/max(1,len(segments_to_process)))*12)
 
@@ -145,11 +164,7 @@ def run_analysis_job(job_id: str, saved_path: str, player: PlayerCreate):
                 )
                 reports.append(r)
 
-                partial_dir = JOBS_DIR / job_id / "partials"
-                partial_dir.mkdir(parents=True, exist_ok=True)
-
-                import json
-                (partial_dir / f"segment_{index:04d}.json").write_text(
+                partial_path.write_text(
                     json.dumps(r, default=str)
                 )
 
