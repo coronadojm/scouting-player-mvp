@@ -178,7 +178,7 @@ def analyze_video_file(
         selected_x=float(selected_x),
         selected_y=float(selected_y),
         frame_percent=float(frame_percent),
-        max_seconds=30,
+        max_seconds=int(os.getenv("SEGMENT_ANALYSIS_SECONDS", "20")),
     )
 
     heat_points = tracking_result["tracking_points"]
@@ -193,7 +193,7 @@ def analyze_video_file(
 
         ball_result = track_ball_video(
             video_path=str(path),
-            max_seconds=10,
+            max_seconds=int(os.getenv("BALL_ANALYSIS_SECONDS", "10")),
         )
         ball_points = ball_result.get("points", [])
         events = detect_basic_events(heat_points, ball_points)
