@@ -44,13 +44,15 @@ def analyze_video_file(
     height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT) or 0)
     duration = total_frames / fps if fps else 0
 
-    sample_every = max(int(fps * 4), 1)
+    sample_every = max(int(fps * 8), 1)
     prev_gray = None
     motion_scores = []
     brightness_scores = []
     sharpness_scores = []
 
     frame_index = 0
+    processed_samples = 0
+    max_samples = 45
 
     while True:
         ok, frame = cap.read()
@@ -58,7 +60,7 @@ def analyze_video_file(
             break
 
         if frame_index % sample_every == 0:
-            resized = cv2.resize(frame, (320, 180))
+            resized = cv2.resize(frame, (160, 90))
             gray = cv2.cvtColor(resized, cv2.COLOR_BGR2GRAY)
 
             brightness_scores.append(float(np.mean(gray)))
@@ -69,6 +71,9 @@ def analyze_video_file(
                 motion_scores.append(float(np.mean(diff)))
 
             prev_gray = gray
+            processed_samples += 1
+            if processed_samples >= max_samples:
+                break
 
         frame_index += 1
 

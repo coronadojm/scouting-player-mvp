@@ -20,6 +20,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
@@ -123,7 +124,15 @@ fun ScoutingApp() {
     if (showReportPage && report != null) {
         ReportDashboardPage(
             report = report!!,
-            onBack = { showReportPage = false }
+            onBack = { showReportPage = false },
+            onNew = {
+                showReportPage = false
+                report = null
+                selectedVideoUri = null
+                firstFrame = null
+                selectedPlayerX = null
+                selectedPlayerY = null
+            }
         )
         return
     }
@@ -231,6 +240,8 @@ fun ScoutingApp() {
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(260.dp)
+                                .clip(RoundedCornerShape(18.dp))
+                                .background(Color(0xFF050805))
                                 .onSizeChanged {
                                     imageW = it.width.coerceAtLeast(1)
                                     imageH = it.height.coerceAtLeast(1)
@@ -244,8 +255,8 @@ fun ScoutingApp() {
                                 .pointerInput(Unit) {
                                     detectTransformGestures { _, pan, zoom, _ ->
                                         zoomScale = (zoomScale * zoom).coerceIn(1f, 3f)
-                                        offsetX += pan.x
-                                        offsetY += pan.y
+                                        offsetX = (offsetX + pan.x).coerceIn(-imageW * 0.25f, imageW * 0.25f)
+                                        offsetY = (offsetY + pan.y).coerceIn(-imageH * 0.25f, imageH * 0.25f)
                                     }
                                 }
                                 .pointerInput(Unit) {
@@ -350,7 +361,7 @@ fun AnalysisReportView(report: AnalysisReport) {
 }
 
 @Composable
-fun ReportDashboardPage(report: AnalysisReport, onBack: () -> Unit) {
+fun ReportDashboardPage(report: AnalysisReport, onBack: () -> Unit, onNew: () -> Unit = onBack) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -359,6 +370,18 @@ fun ReportDashboardPage(report: AnalysisReport, onBack: () -> Unit) {
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Button(onClick = onBack, modifier = Modifier.weight(1f)) {
+                Text("Cerrar")
+            }
+            Button(onClick = onNew, modifier = Modifier.weight(1f)) {
+                Text("Nueva evaluación")
+            }
+        }
+
         Text("INFORME SCOUTING", color = Color(0xFF00E676), fontWeight = FontWeight.Bold)
         Text(report.player_name, style = MaterialTheme.typography.headlineLarge, color = Color.White, fontWeight = FontWeight.Bold)
         Text(report.reference_group, color = Color.LightGray)
@@ -582,7 +605,7 @@ fun RadarChart(report: AnalysisReport) {
         Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             Text("RADAR DE HABILIDADES", color = Color.White, fontWeight = FontWeight.Bold)
 
-            Canvas(modifier = Modifier.fillMaxWidth().height(320.dp)) {
+            Canvas(modifier = Modifier.fillMaxWidth().height(260.dp)) {
                 val center = Offset(size.width / 2f, size.height / 2f)
                 val radius = size.minDimension * 0.34f
 
