@@ -8,6 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.schemas import PlayerCreate
 from app.analysis_engine import MockAnalysisEngine
+from app.vision.video_segmenter import split_video_into_segments
 
 app = FastAPI(title="Scouting Player API")
 
@@ -95,7 +96,42 @@ def run_analysis_job(job_id: str, saved_path: str, player: PlayerCreate):
         })
 
         try:
-            report = engine.analyze(video_path=saved_path, player=player)
+            segments_dir = JOBS_DIR / job_id / "segments"
+
+        update_job(job_id, {
+            "progress": 72,
+            "stage": "Dividiendo vídeo en segmentos de 60 segundos.",
+            "elapsed_seconds": int(time.time() - start),
+            "estimated_remaining_seconds": 30,
+        })
+
+        segments = split_video_into_segments(
+            video_path=saved_path,
+            output_dir=str(segments_dir),
+            segment_seconds=60,
+        )
+
+        update_job(job_id, {
+            "progress": 78,
+            "stage": f"Vídeo dividido en {len(segments)} segmentos. Analizando primer segmento.",
+            "segments_total": len(segments),
+            "segments_done": 0,
+            "elapsed_seconds": int(time.time() - start),
+            "estimated_remaining_seconds": 20,
+        })
+
+        analysis_path = segments[0] if segments else saved_path
+
+        report = engine.analyze(video_path=analysis_path, player=player)
+
+        if isinstance(report, dict):
+            report["video_segments"] = {
+                "mode": "segmented_mvp",
+                "segment_seconds": 60,
+                "segments_total": len(segments),
+                "segments_analyzed": 1 if segments else 0,
+                "note": "MVP: analiza el primer segmento y deja preparado el flujo para partido completo."
+            }
         except BaseException as e:
             report = {
                 "player_name": player.name,
