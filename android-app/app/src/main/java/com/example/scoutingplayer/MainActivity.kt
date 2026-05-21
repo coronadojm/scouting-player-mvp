@@ -325,20 +325,52 @@ fun ScoutingApp() {
                                         fun part(value: String) = value.toRequestBody("text/plain".toMediaTypeOrNull())
 
                                         progress = 0.75f
-                                        NetworkModule.api.analyzeVideo(
-                                            video = videoPart,
-                                            playerName = part(playerName),
-                                            age = part(age),
-                                            category = part(category),
-                                            position = part(position),
-                                            dominantFoot = part(foot),
-                                            level = part(level),
-                                            dorsal = part(dorsal),
-                                            shirtColor = part(shirtColor),
-                                            identificationMode = part(identificationMode),
-                                            selectedX = part((selectedPlayerX ?: -1f).toString()),
-                                            selectedY = part((selectedPlayerY ?: -1f).toString())
-                                        )
+                                        run {
+                                            progress = 0.08f
+                                            analysisStage = "Subiendo vídeo al servidor..."
+
+                                            val job = NetworkModule.api.startAnalysis(
+                                                video = videoPart,
+                                                playerName = part(playerName),
+                                                age = part(age),
+                                                category = part(category),
+                                                position = part(position),
+                                                dominantFoot = part(foot),
+                                                level = part(level),
+                                                dorsal = part(dorsal),
+                                                shirtColor = part(shirtColor),
+                                                identificationMode = part(identificationMode),
+                                                selectedX = part((selectedPlayerX ?: -1f).toString()),
+                                                selectedY = part((selectedPlayerY ?: -1f).toString())
+                                            )
+
+                                            var finalReport: AnalysisReport? = null
+
+                                            while (finalReport == null) {
+                                                kotlinx.coroutines.delay(1500)
+
+                                                val status = NetworkModule.api.getAnalysisStatus(job.job_id)
+
+                                                progress = (status.progress / 100f).coerceIn(0f, 1f)
+                                                analysisStage = status.stage
+                                                elapsedSeconds = status.elapsed_seconds
+                                                estimatedSeconds = status.estimated_remaining_seconds
+
+                                                if (status.status == "done") {
+                                                    finalReport = status.report
+                                                }
+
+                                                if (status.status == "failed") {
+                                                    throw RuntimeException(status.error ?: "Error en análisis")
+                                                }
+
+                                                if (status.status == "not_found") {
+                                                    throw RuntimeException("No se encontró el análisis")
+                                                }
+                                            }
+
+                                            finalReport ?: throw RuntimeException("Informe vacío")
+                                        }
                                     }
                                     progress = 1f
                                     report = result

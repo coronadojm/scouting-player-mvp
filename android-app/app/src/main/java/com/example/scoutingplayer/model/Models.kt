@@ -22,3 +22,17 @@ data class AnalysisReport(
     val confidence: Double,
     val notes: List<String>
 )
+
+data class AnalysisJobStartResponse(
+    val job_id: String
+)
+
+data class AnalysisJobStatus(
+    val status: String,
+    val progress: Int,
+    val stage: String,
+    val elapsed_seconds: Int,
+    val estimated_remaining_seconds: Int?,
+    val report: AnalysisReport?,
+    val error: String?
+)
