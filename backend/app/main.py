@@ -145,6 +145,14 @@ def run_analysis_job(job_id: str, saved_path: str, player: PlayerCreate):
                 )
                 reports.append(r)
 
+                partial_dir = JOBS_DIR / job_id / "partials"
+                partial_dir.mkdir(parents=True, exist_ok=True)
+
+                import json
+                (partial_dir / f"segment_{index:04d}.json").write_text(
+                    json.dumps(r, default=str)
+                )
+
             except Exception as e:
                 print(e)
 
