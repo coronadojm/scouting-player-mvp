@@ -5,6 +5,8 @@ import numpy as np
 from pathlib import Path
 from app.vision.player_tracker import track_selected_player
 from app.vision.player_tracker import track_players_video
+from app.vision.ball_tracker import track_ball_video
+from app.vision.event_detector import detect_basic_events
 
 
 def percentile_from_value(value, mean, std):
@@ -184,6 +186,13 @@ def analyze_video_file(
     heat_points = tracking_result["tracking_points"]
     tracking_active = tracking_result["tracking_active"]
 
+    ball_result = track_ball_video(
+        video_path=str(path),
+        max_seconds=30,
+    )
+    ball_points = ball_result.get("points", [])
+    events = detect_basic_events(heat_points, ball_points)
+
     physical = min(10, max(4, 5.5 + avg_motion / 8))
     technical = min(10, max(4, 6.0 + avg_sharpness / 350))
     tactical = round(min(9.2, max(4.8, 5.8 + avg_motion / 22)), 1)
@@ -292,6 +301,8 @@ def analyze_video_file(
             f"Tracking engine: YOLOv8n + ByteTrack",
             f"Tracking engine: YOLOv8n + ByteTrack",
             f"Tracking points: {len(heat_points)}",
+            f"Ball tracking points: {len(ball_points)}",
+            f"Events detected: {len(events)}",
             f"HEATMAP_POINTS={heatmap_encoded}",
             f"Percentil técnico: {percentiles['technical']}",
             f"Percentil táctico: {percentiles['tactical']}",
