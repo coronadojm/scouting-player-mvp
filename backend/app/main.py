@@ -195,11 +195,8 @@ async def start_video_analysis(
 
     save_job(job_id)
 
-    threading.Thread(
-        target=run_analysis_job,
-        args=(job_id, str(saved_path), player),
-        daemon=True
-    ).start()
+    # Modo estable Render: ejecutar directamente para evitar que el thread se pierda.
+    run_analysis_job(job_id, str(saved_path), player)
 
     return {"job_id": job_id}
 
