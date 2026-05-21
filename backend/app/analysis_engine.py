@@ -5,8 +5,6 @@ import numpy as np
 from pathlib import Path
 from app.vision.player_tracker import track_selected_player
 from app.vision.player_tracker import track_players_video
-from app.vision.ball_tracker import track_ball_video
-from app.vision.event_detector import detect_basic_events
 
 
 def percentile_from_value(value, mean, std):
@@ -185,6 +183,9 @@ def analyze_video_file(
 
     heat_points = tracking_result["tracking_points"]
     tracking_active = tracking_result["tracking_active"]
+
+    from app.vision.ball_tracker import track_ball_video
+    from app.vision.event_detector import detect_basic_events
 
     ball_result = track_ball_video(
         video_path=str(path),
