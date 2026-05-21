@@ -2,7 +2,8 @@ import uuid
 import time
 import shutil
 from pathlib import Path
-from fastapi import FastAPI, UploadFile, File, Form, BackgroundTasks
+from fastapi import FastAPI, UploadFile, File, Form
+import threading
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.schemas import PlayerCreate
@@ -126,7 +127,7 @@ def run_analysis_job(job_id: str, saved_path: str, player: PlayerCreate):
 
 @app.post("/analysis/video/start")
 async def start_video_analysis(
-    background_tasks: BackgroundTasks,
+    
     video: UploadFile = File(...),
     player_name: str = Form(...),
     age: str = Form(...),
@@ -177,7 +178,11 @@ async def start_video_analysis(
 
     save_job(job_id)
 
-    background_tasks.add_task(run_analysis_job, job_id, str(saved_path), player)
+    threading.Thread(
+        target=run_analysis_job,
+        args=(job_id, str(saved_path), player),
+        daemon=True
+    ).start()
 
     return {"job_id": job_id}
 
