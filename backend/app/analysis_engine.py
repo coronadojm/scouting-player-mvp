@@ -44,7 +44,7 @@ def analyze_video_file(
     height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT) or 0)
     duration = total_frames / fps if fps else 0
 
-    sample_every = max(int(fps), 1)
+    sample_every = max(int(fps * 4), 1)
     prev_gray = None
     motion_scores = []
     brightness_scores = []
@@ -80,8 +80,8 @@ def analyze_video_file(
 
     physical = min(10, max(4, 5.5 + avg_motion / 8))
     technical = min(10, max(4, 6.0 + avg_sharpness / 350))
-    tactical = 6.5
-    decision = 6.4
+    tactical = round(min(9.2, max(4.8, 5.8 + avg_motion / 22)), 1)
+    decision = round(min(9.0, max(4.7, 5.7 + avg_sharpness / 5000)), 1)
     global_score = round((physical + technical + tactical + decision) / 4, 1)
 
     if avg_motion > 18:

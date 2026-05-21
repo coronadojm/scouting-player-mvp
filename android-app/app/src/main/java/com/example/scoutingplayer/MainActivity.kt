@@ -81,7 +81,7 @@ fun ScoutingApp() {
     var position by remember { mutableStateOf("Interior Izquierdo") }
     var dorsal by remember { mutableStateOf("10") }
     var shirtColor by remember { mutableStateOf("Azul") }
-    var identificationMode by remember { mutableStateOf("Dorsal + selección manual") }
+    var identificationMode by remember { mutableStateOf("Color camiseta + dorsal") }
     var foot by remember { mutableStateOf("Derecha") }
     var level by remember { mutableStateOf("Alto") }
 
@@ -176,13 +176,13 @@ fun ScoutingApp() {
 
                     Text("Modo identificación", color = Color.White, fontWeight = FontWeight.Bold)
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                        listOf("Solo dorsal", "Color + dorsal", "Manual").forEach { label ->
+                        listOf("Color + dorsal", "Manual").forEach { label ->
                             Button(
                                 onClick = {
                                     identificationMode = when(label) {
                                         "Manual" -> "Dorsal + selección manual"
                                         "Color + dorsal" -> "Color camiseta + dorsal"
-                                        else -> "Solo dorsal"
+                                        else -> "Color camiseta + dorsal"
                                     }
                                 },
                                 modifier = Modifier.weight(1f)
@@ -201,6 +201,7 @@ fun ScoutingApp() {
                         Text(if (selectedVideoUri == null) "Seleccionar vídeo" else "Vídeo seleccionado")
                     }
 
+                    if (identificationMode == "Dorsal + selección manual") {
                     firstFrame?.let { frame ->
                         Text("Elige un momento donde se vea el jugador", color = Color.White, fontWeight = FontWeight.Bold)
 
@@ -229,7 +230,7 @@ fun ScoutingApp() {
                             contentScale = ContentScale.Fit,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(340.dp)
+                                .height(260.dp)
                                 .onSizeChanged {
                                     imageW = it.width.coerceAtLeast(1)
                                     imageH = it.height.coerceAtLeast(1)
@@ -242,7 +243,7 @@ fun ScoutingApp() {
                                 )
                                 .pointerInput(Unit) {
                                     detectTransformGestures { _, pan, zoom, _ ->
-                                        zoomScale = (zoomScale * zoom).coerceIn(1f, 5f)
+                                        zoomScale = (zoomScale * zoom).coerceIn(1f, 3f)
                                         offsetX += pan.x
                                         offsetY += pan.y
                                     }
@@ -259,13 +260,15 @@ fun ScoutingApp() {
 
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                             Button(onClick = { zoomScale = 1f; offsetX = 0f; offsetY = 0f }, modifier = Modifier.weight(1f)) { Text("Reset") }
-                            Button(onClick = { zoomScale = (zoomScale + 0.5f).coerceAtMost(5f) }, modifier = Modifier.weight(1f)) { Text("Zoom +") }
+                            Button(onClick = { zoomScale = (zoomScale + 0.5f).coerceAtMost(3f) }, modifier = Modifier.weight(1f)) { Text("Zoom +") }
                             Button(onClick = { zoomScale = (zoomScale - 0.5f).coerceAtLeast(1f) }, modifier = Modifier.weight(1f)) { Text("Zoom -") }
                         }
 
                         if (selectedPlayerX != null && selectedPlayerY != null) {
                             Text("Jugador marcado: X ${(selectedPlayerX!! * 100).toInt()}% · Y ${(selectedPlayerY!! * 100).toInt()}%", color = Color(0xFF00E676), fontWeight = FontWeight.Bold)
                         }
+                    }
+
                     }
 
                     Button(
