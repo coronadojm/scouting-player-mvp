@@ -126,6 +126,7 @@ def run_analysis_job(job_id: str, saved_path: str, player: PlayerCreate):
         reports=[]
 
         max_segments = int(os.getenv("MAX_ANALYSIS_SEGMENTS", "3"))
+        analysis_mode = os.getenv("ANALYSIS_MODE", "fast")
         segments_to_process = segments[:max_segments]
 
         partial_dir = JOBS_DIR / job_id / "partials"
@@ -155,7 +156,7 @@ def run_analysis_job(job_id: str, saved_path: str, player: PlayerCreate):
 
             update_job(job_id,{
                 "progress":progress,
-                "stage":f"Analizando segmento {index+1}/{len(segments_to_process)} de {len(segments)} totales",
+                "stage":f"Analizando segmento {index+1}/{len(segments_to_process)} de {len(segments)} totales. Modo: {analysis_mode}",
                 "segments_done": index + 1,
                 "segments_total": len(segments),
                 "segments_processing_limit": len(segments_to_process)
@@ -166,6 +167,9 @@ def run_analysis_job(job_id: str, saved_path: str, player: PlayerCreate):
                     video_path=segment,
                     player=player
                 )
+
+                if isinstance(r, dict):
+                    r["analysis_mode"] = analysis_mode
                 reports.append(r)
 
                 partial_path.write_text(
@@ -183,7 +187,8 @@ def run_analysis_job(job_id: str, saved_path: str, player: PlayerCreate):
                 "segments_total": len(segments),
                 "segments_processed": len(reports),
                 "max_segments": max_segments,
-                "note": "Análisis por segmentos activado. Para 45 min completos, subir MAX_ANALYSIS_SEGMENTS en Render."
+                "analysis_mode": analysis_mode,
+                "note": "Análisis por segmentos activado. Para 45 min completos, subir MAX_ANALYSIS_SEGMENTS en Render y mantener ANALYSIS_MODE=fast."
             }
 
         if isinstance(report, dict):
