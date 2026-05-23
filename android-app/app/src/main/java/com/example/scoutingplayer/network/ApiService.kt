@@ -15,7 +15,7 @@ interface ApiService {
     @Multipart
     @POST("/analysis/video/start")
     suspend fun startAnalysis(
-        @Part video: MultipartBody.Part,
+        @Part file: MultipartBody.Part,
         @Part("player_name") playerName: RequestBody,
         @Part("age") age: RequestBody,
         @Part("category") category: RequestBody,
@@ -39,7 +39,7 @@ interface ApiService {
     @Multipart
     @POST("/analysis/video")
     suspend fun analyzeVideo(
-        @Part video: MultipartBody.Part,
+        @Part file: MultipartBody.Part,
         @Part("player_name") playerName: RequestBody,
         @Part("age") age: RequestBody,
         @Part("category") category: RequestBody,

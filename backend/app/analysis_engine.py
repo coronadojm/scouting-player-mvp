@@ -5,6 +5,8 @@ import math
 import numpy as np
 from pathlib import Path
 from app.vision.player_tracker import track_selected_player
+from app.vision.event_detector import detect_events_from_points
+from app.vision.match_summary import build_match_summary
 
 
 def percentile_from_value(value, mean, std):
@@ -178,24 +180,30 @@ def analyze_video_file(
         selected_x=float(selected_x),
         selected_y=float(selected_y),
         frame_percent=float(frame_percent),
-        max_seconds=int(os.getenv("SEGMENT_ANALYSIS_SECONDS", "20")),
+        max_seconds=int(os.getenv("SEGMENT_ANALYSIS_SECONDS", "5")),
     )
 
-    heat_points = tracking_result.get("tracking_points", tracking_result.get("points", []))
+    heat_points = tracking_result.get("player_points", tracking_result.get("points", []))
+    detected_events = detect_events_from_points(
+            heat_points,
+            tracking_result.get("player_times")
+        )
+
+    match_summary=build_match_summary(detected_events, duration/60 if duration else 0)
     tracking_active = tracking_result.get("tracking_active", tracking_result.get("active", False))
 
     try:
-        from app.vision.ball_tracker import track_ball_video
+        from app.vision.ball_tracker import track_ball
         from app.vision.event_detector import detect_basic_events
         from app.vision.exporters.statsbomb_like import export_events
         from app.vision.exporters.metrica_like import export_tracking
         from app.vision.exporters.soccernet_like import export_actions
 
-        ball_result = track_ball_video(
+        ball_result = track_ball(
             video_path=str(path),
             max_seconds=int(os.getenv("BALL_ANALYSIS_SECONDS", "10")),
         )
-        ball_points = ball_result.get("points", [])
+        ball_points = tracking_result.get("ball_points", ball_result.get("points", []))
         events = detect_basic_events(heat_points, ball_points)
         statsbomb_events = export_events(events)
         metrica_tracking = export_tracking(heat_points, ball_points)
@@ -312,6 +320,20 @@ def analyze_video_file(
 
         "confidence": round(confidence, 1),
 
+        "tracking": {
+            "player_points": heat_points,
+            "ball_points": tracking_result.get("ball_points", ball_points),
+            "events": detected_events,
+            "match_summary": match_summary,
+            "statsbomb_events": statsbomb_events,
+            "metrica_tracking": metrica_tracking,
+            "soccernet_actions": soccernet_actions,
+            "player_engine": tracking_result.get("engine", "unknown"),
+            "ball_engine": ball_result.get("engine", "unknown"),
+            "tracking_active": tracking_active,
+            "ball_active": tracking_result.get("ball_active", ball_result.get("active", False)),
+        },
+
         "notes": [
             f"Duración: {duration/60:.1f} min",
             f"Resolución: {width}x{height}",
@@ -322,7 +344,7 @@ def analyze_video_file(
             f"Tracking engine: YOLOv8n + ByteTrack",
             f"Tracking points: {len(heat_points)}",
             f"Ball tracking points: {len(ball_points)}",
-            f"Events detected: {len(events)}",
+            f"Events detected: {len(detected_events)}",
             f"HEATMAP_POINTS={heatmap_encoded}",
             f"Percentil técnico: {percentiles['technical']}",
             f"Percentil táctico: {percentiles['tactical']}",
@@ -346,3 +368,30 @@ class MockAnalysisEngine:
             selected_y=float(getattr(player, "selected_y", -1.0)),
             frame_percent=float(getattr(player, "frame_percent", 25.0)),
         )
+
+
+def analyze_long_video(video_path, selected_x=None, selected_y=None, frame_percent=None):
+    """
+    Analiza un partido largo y devuelve los puntos del jugador, balón,
+    eventos y resumen por tramos.
+    """
+    from app.vision.player_tracker import track_selected_player
+    from app.vision.event_detector import detect_events_from_points
+
+    # Tracking jugador
+    tracking_result = track_selected_player(video_path, selected_x, selected_y, frame_percent)
+    heat_points = tracking_result.get('player_points', tracking_result.get('points', []))
+    ball_points = tracking_result.get('ball_points', [])
+    detected_events = detect_events_from_points(heat_points)
+
+    # Resumen de tramos
+    duration_minutes = (tracking_result.get('duration', 0)) / 60
+    match_summary = [{"tramo": f"{i*15}-{(i+1)*15} min", "sprints": 0, "conducciones": 0, "cambios_direccion": 0} for i in range(int(duration_minutes/15)+1)]
+
+    return {
+        "player_points": heat_points,
+        "ball_points": ball_points,
+        "events": detected_events,
+        "match_summary": match_summary,
+        "duration_minutes": duration_minutes
+    }

@@ -41,6 +41,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import com.example.scoutingplayer.model.AnalysisReport
+import com.example.scoutingplayer.model.DetectedEvent
 import com.example.scoutingplayer.network.NetworkModule
 import com.example.scoutingplayer.service.AnalysisForegroundService
 import kotlinx.coroutines.Dispatchers
@@ -342,7 +343,7 @@ fun ScoutingApp() {
                                         progress = 0.45f
                                         val requestFile = tempFile.asRequestBody("video/mp4".toMediaTypeOrNull())
                                         val fileName = context.getFileName(uri) ?: "video.mp4"
-                                        val videoPart = MultipartBody.Part.createFormData("video", fileName, requestFile)
+                                        val videoPart = MultipartBody.Part.createFormData("file", fileName, requestFile)
 
                                         fun part(value: String) = value.toRequestBody("text/plain".toMediaTypeOrNull())
 
@@ -352,7 +353,7 @@ fun ScoutingApp() {
                                             analysisStage = "Subiendo vídeo al servidor..."
 
                                             val job = NetworkModule.api.startAnalysis(
-                                                video = videoPart,
+                                                file = videoPart,
                                                 playerName = part(playerName),
                                                 age = part(age),
                                                 category = part(category),
@@ -481,6 +482,7 @@ fun ReportDashboardPage(report: AnalysisReport, onBack: () -> Unit, onNew: () ->
         StatsCard(report)
         SectionCard("RESUMEN DEL ANÁLISIS", report.scouting_summary)
         HeatMapCard(report)
+        EventsCard(report)
         RadarChart(report)
         BulletSection("FORTALEZAS", report.strengths, true)
         BulletSection("A MEJORAR", report.improvements, false)
@@ -909,3 +911,24 @@ fun android.content.Context.getFileName(uri: Uri): String? {
 
 
 
+
+@Composable
+fun EventsCard(report: AnalysisReport) {
+    val events = report.tracking?.events ?: emptyList()
+
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text("Eventos detectados", style = MaterialTheme.typography.titleMedium)
+
+            if (events.isEmpty()) {
+                Text("Sin eventos detectados todavía")
+            } else {
+                events.take(12).forEach { event ->
+                    Text(
+                        text = "• ${event.type ?: "evento"} · ${event.time ?: 0.0}s · ${event.description ?: ""}"
+                    )
+                }
+            }
+        }
+    }
+}

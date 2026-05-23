@@ -8,6 +8,23 @@ data class ScoreBlock(
     val global_score: Double
 )
 
+data class DetectedEvent(
+    val type: String? = null,
+    val time: Double? = null,
+    val confidence: Double? = null,
+    val description: String? = null
+)
+
+data class TrackingData(
+    val player_points: List<List<Double>>? = emptyList(),
+    val ball_points: List<List<Double>>? = emptyList(),
+    val events: List<DetectedEvent>? = emptyList(),
+    val player_engine: String? = null,
+    val ball_engine: String? = null,
+    val tracking_active: Boolean? = false,
+    val ball_active: Boolean? = false
+)
+
 data class AnalysisReport(
     val player_name: String,
     val age: Int,
@@ -20,7 +37,8 @@ data class AnalysisReport(
     val training_tasks: List<String>,
     val scouting_summary: String,
     val confidence: Double,
-    val notes: List<String>
+    val notes: List<String>,
+    val tracking: TrackingData? = null
 )
 
 data class AnalysisJobStartResponse(
