@@ -343,7 +343,7 @@ fun ScoutingApp() {
                                         progress = 0.45f
                                         val requestFile = tempFile.asRequestBody("video/mp4".toMediaTypeOrNull())
                                         val fileName = context.getFileName(uri) ?: "video.mp4"
-                                        val videoPart = MultipartBody.Part.createFormData("file", fileName, requestFile)
+                                        val videoPart = MultipartBody.Part.createFormData("video", fileName, requestFile)
 
                                         fun part(value: String) = value.toRequestBody("text/plain".toMediaTypeOrNull())
 
@@ -461,8 +461,8 @@ fun ReportDashboardPage(report: AnalysisReport, onBack: () -> Unit, onNew: () ->
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         Text("INFORME SCOUTING", color = Color(0xFF00E676), fontWeight = FontWeight.Bold)
-        Text(report.player_name, style = MaterialTheme.typography.headlineLarge, color = Color.White, fontWeight = FontWeight.Bold)
-        Text(report.reference_group, color = Color.LightGray)
+        Text((report.player_name ?: "Jugador"), style = MaterialTheme.typography.headlineLarge, color = Color.White, fontWeight = FontWeight.Bold)
+        Text((report.reference_group ?: ""), color = Color.LightGray)
 
         Card(colors = CardDefaults.cardColors(containerColor = Color(0xFF101311)), shape = RoundedCornerShape(24.dp)) {
             Column(modifier = Modifier.padding(20.dp)) {
@@ -480,7 +480,7 @@ fun ReportDashboardPage(report: AnalysisReport, onBack: () -> Unit, onNew: () ->
 
         CompareCard(report)
         StatsCard(report)
-        SectionCard("RESUMEN DEL ANÁLISIS", report.scouting_summary)
+        SectionCard("RESUMEN DEL ANÁLISIS", (report.scouting_summary ?: ""))
         HeatMapCard(report)
         EventsCard(report)
         RadarChart(report)
@@ -553,11 +553,11 @@ fun SectionCard(title: String, text: String) {
 }
 
 @Composable
-fun BulletSection(title: String, items: List<String>, positive: Boolean) {
+fun BulletSection(title: String, items: List<String>? = emptyList(), positive: Boolean) {
     Card(colors = CardDefaults.cardColors(containerColor = Color(0xFF101311)), shape = RoundedCornerShape(18.dp)) {
         Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(title, color = Color.White, fontWeight = FontWeight.Bold)
-            items.forEach {
+            (items ?: emptyList<String>()).forEach {
                 Text(if (positive) "✓ $it" else "⚠ $it", color = if (positive) Color(0xFFB9F6CA) else Color(0xFFFFCC80))
             }
         }
@@ -579,7 +579,7 @@ fun CompareCard(report: AnalysisReport) {
     Card(colors = CardDefaults.cardColors(containerColor = Color(0xFF07100D)), shape = RoundedCornerShape(24.dp)) {
         Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             Text("COMPARATIVA POR EDAD", color = Color.White, fontWeight = FontWeight.Bold)
-            Text("Comparado con ${report.reference_group}", color = Color.LightGray)
+            Text("Comparado con ${(report.reference_group ?: "")}", color = Color.LightGray)
 
             PercentileLine("Técnica", report.scores.technical)
             PercentileLine("Táctica", report.scores.tactical)
@@ -646,20 +646,11 @@ fun StatBox(icon: String, value: String, label: String, modifier: Modifier = Mod
 
 @Composable
 fun HeatMapCard(report: AnalysisReport) {
-    val encoded = report.notes
-        .firstOrNull { it.startsWith("HEATMAP_POINTS=") }
-        ?.removePrefix("HEATMAP_POINTS=")
-        ?: ""
-
-    val points = encoded.split(";")
-        .mapNotNull {
-            val parts = it.split(":")
-            if (parts.size == 2) {
-                val x = parts[0].toFloatOrNull()
-                val y = parts[1].toFloatOrNull()
-                if (x != null && y != null) x to y else null
-            } else null
+    val points = report.tracking?.player_points
+        ?.mapNotNull {
+            if (it.size >= 2) it[0].toFloat() to it[1].toFloat() else null
         }
+        ?: emptyList()
 
     Card(
         colors = CardDefaults.cardColors(containerColor = Color(0xFF07100D)),

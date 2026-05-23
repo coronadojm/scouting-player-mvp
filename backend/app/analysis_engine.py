@@ -6,6 +6,10 @@ import numpy as np
 from pathlib import Path
 from app.vision.player_tracker import track_selected_player
 from app.vision.event_detector import detect_events_from_points
+from app.vision.calibration.field_metrics import (
+    distance_meters,
+    max_speed
+)
 from app.vision.match_summary import build_match_summary
 
 
@@ -184,6 +188,25 @@ def analyze_video_file(
     )
 
     heat_points = tracking_result.get("player_points", tracking_result.get("points", []))
+
+    print("DEBUG TRACKING INITIAL:", len(heat_points))
+
+    if not heat_points:
+        tracking_result = track_selected_player(
+            video_path=str(path),
+            selected_x=None,
+            selected_y=None,
+            frame_percent=0,
+            max_seconds=int(os.getenv("SEGMENT_ANALYSIS_SECONDS", "5")),
+        )
+
+        heat_points = tracking_result.get(
+            "player_points",
+            tracking_result.get("points", [])
+        )
+
+        print("DEBUG TRACKING FALLBACK:", len(heat_points))
+
     detected_events = detect_events_from_points(
             heat_points,
             tracking_result.get("player_times")
@@ -318,6 +341,7 @@ def analyze_video_file(
             f"técnica P{percentiles['technical']}, táctica P{percentiles['tactical']}, "
             f"físico P{percentiles['physical']} y decisión P{percentiles['decision_making']}.",
 
+        
         "confidence": round(confidence, 1),
 
         "tracking": {
@@ -345,6 +369,8 @@ def analyze_video_file(
             f"Tracking points: {len(heat_points)}",
             f"Ball tracking points: {len(ball_points)}",
             f"Events detected: {len(detected_events)}",
+            f"Distance: {distance_total} m",
+            f"Max speed: {vmax} km/h",
             f"HEATMAP_POINTS={heatmap_encoded}",
             f"Percentil técnico: {percentiles['technical']}",
             f"Percentil táctico: {percentiles['tactical']}",
@@ -377,12 +403,24 @@ def analyze_long_video(video_path, selected_x=None, selected_y=None, frame_perce
     """
     from app.vision.player_tracker import track_selected_player
     from app.vision.event_detector import detect_events_from_points
+    from app.vision.calibration.field_metrics import (
+        distance_meters,
+        max_speed
+    )
 
     # Tracking jugador
     tracking_result = track_selected_player(video_path, selected_x, selected_y, frame_percent)
     heat_points = tracking_result.get('player_points', tracking_result.get('points', []))
     ball_points = tracking_result.get('ball_points', [])
     detected_events = detect_events_from_points(heat_points)
+
+    distance_total = distance_meters(
+        heat_points
+    )
+
+    vmax = max_speed(
+        heat_points
+    )
 
     # Resumen de tramos
     duration_minutes = (tracking_result.get('duration', 0)) / 60
