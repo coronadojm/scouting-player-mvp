@@ -585,6 +585,8 @@ fun ScoutingApp() {
                     error?.let {
                         Text("Error: $it", color = Color(0xFFFF8080))
                     }
+
+                    BottomNavBar()
                 }
             }
 
@@ -1265,6 +1267,28 @@ fun EventsCard(report: AnalysisReport) {
                     }
                 }
             }
+        }
+    }
+}
+
+
+@Composable
+fun BottomNavBar() {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFF101311)),
+        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 10.dp),
+            horizontalArrangement = Arrangement.SpaceAround
+        ) {
+            Text("🏠\nInicio", color = Color(0xFF00E676), fontSize = 12.sp)
+            Text("📊\nInformes", color = Color.LightGray, fontSize = 12.sp)
+            Text("👤\nJugadores", color = Color.LightGray, fontSize = 12.sp)
+            Text("⚙️\nAjustes", color = Color.LightGray, fontSize = 12.sp)
         }
     }
 }
