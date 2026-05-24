@@ -27,6 +27,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -95,6 +96,9 @@ fun ScoutingApp() {
     var dorsal by remember { mutableStateOf("10") }
     var shirtColor by remember { mutableStateOf("Azul") }
     var identificationMode by remember { mutableStateOf("Color camiseta + dorsal") }
+    var attackDirection by remember { mutableStateOf("right") }
+    var videoMode by remember { mutableStateOf("clip") }
+    var halftimeMinute by remember { mutableStateOf("45") }
     var foot by remember { mutableStateOf("Derecha") }
     var level by remember { mutableStateOf("Alto") }
 
@@ -198,6 +202,59 @@ fun ScoutingApp() {
                     OutlinedTextField(category, { category = it }, label = { Text("Categoría") }, modifier = Modifier.fillMaxWidth())
                     OutlinedTextField(position, { position = it }, label = { Text("Posición") }, modifier = Modifier.fillMaxWidth())
                     OutlinedTextField(dorsal, { dorsal = it }, label = { Text("Dorsal") }, modifier = Modifier.fillMaxWidth())
+
+                    Text("Tipo de vídeo", color = Color.White)
+
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Button(onClick = { videoMode = "clip" }) {
+                            Text("Clip / entrenamiento")
+                        }
+
+                        Button(onClick = { videoMode = "match" }) {
+                            Text("Partido completo")
+                        }
+                    }
+
+                    Text(
+                        text = if (videoMode == "clip")
+                            "Dirección del equipo en este vídeo"
+                        else
+                            "Dirección del equipo en la 1ª parte",
+                        color = Color.White
+                    )
+
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Button(onClick = { attackDirection = "left" }) {
+                            Text("← Izquierda")
+                        }
+
+                        Button(onClick = { attackDirection = "right" }) {
+                            Text("Derecha →")
+                        }
+                    }
+
+                    if (videoMode == "match") {
+                        OutlinedTextField(
+                            halftimeMinute,
+                            { halftimeMinute = it },
+                            label = { Text("Minuto descanso") },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+
+                        Text(
+                            text = "En la 2ª parte se invertirá automáticamente.",
+                            color = Color.LightGray
+                        )
+                    }
+
+                    Text(
+                        text = "Seleccionado: " +
+                            if (videoMode == "clip")
+                                "clip · " + if (attackDirection == "left") "←" else "→"
+                            else
+                                "partido · 1ª parte " + if (attackDirection == "left") "←" else "→",
+                        color = Color.LightGray
+                    )
                     OutlinedTextField(shirtColor, { shirtColor = it }, label = { Text("Color camiseta") }, modifier = Modifier.fillMaxWidth())
                     OutlinedTextField(foot, { foot = it }, label = { Text("Pierna dominante") }, modifier = Modifier.fillMaxWidth())
                     OutlinedTextField(level, { level = it }, label = { Text("Nivel") }, modifier = Modifier.fillMaxWidth())
@@ -365,7 +422,8 @@ fun ScoutingApp() {
                                                 identificationMode = part(identificationMode),
                                                 selectedX = part((selectedPlayerX ?: -1f).toString()),
                                                 selectedY = part((selectedPlayerY ?: -1f).toString()),
-                                                framePercent = part(framePercent.toString())
+                                                framePercent = part(framePercent.toString()),
+                                                attackDirection = part(attackDirection)
                                             )
 
                                             var finalReport: AnalysisReport? = null
@@ -460,17 +518,86 @@ fun ReportDashboardPage(report: AnalysisReport, onBack: () -> Unit, onNew: () ->
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        Text("INFORME SCOUTING", color = Color(0xFF00E676), fontWeight = FontWeight.Bold)
-        Text((report.player_name ?: "Jugador"), style = MaterialTheme.typography.headlineLarge, color = Color.White, fontWeight = FontWeight.Bold)
-        Text((report.reference_group ?: ""), color = Color.LightGray)
+        Text("SCOUTING PLAYER MVP", color = Color(0xFF00E676), fontWeight = FontWeight.Bold)
 
-        Card(colors = CardDefaults.cardColors(containerColor = Color(0xFF101311)), shape = RoundedCornerShape(24.dp)) {
-            Column(modifier = Modifier.padding(20.dp)) {
-                Text("NOTA GLOBAL", color = Color.White, fontWeight = FontWeight.Bold)
-                Text("${report.scores.global_score}/10", style = MaterialTheme.typography.displayMedium, color = Color(0xFF00E676), fontWeight = FontWeight.Bold)
-                LinearProgressIndicator(progress = { (report.scores.global_score / 10).toFloat() }, modifier = Modifier.fillMaxWidth(), color = Color(0xFF00E676))
+        Card(
+            colors = CardDefaults.cardColors(containerColor = Color(0xFF101311)),
+            shape = RoundedCornerShape(28.dp)
+        ) {
+            Column(
+                modifier = Modifier.padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Text(
+                    text = report.player_name ?: "Jugador",
+                    style = MaterialTheme.typography.headlineLarge,
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold
+                )
+
+                Text(
+                    text = report.reference_group ?: "",
+                    color = Color.LightGray
+                )
+
+                Text(
+                    text = "${report.scores.global_score}/10",
+                    style = MaterialTheme.typography.displayMedium,
+                    color = Color(0xFF00E676),
+                    fontWeight = FontWeight.Bold
+                )
+
+                LinearProgressIndicator(
+                    progress = { (report.scores.global_score / 10).toFloat() },
+                    modifier = Modifier.fillMaxWidth(),
+                    color = Color(0xFF00E676)
+                )
             }
         }
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Card(
+                modifier = Modifier.weight(1f),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFF101311)),
+                shape = RoundedCornerShape(18.dp)
+            ) {
+                Column(modifier = Modifier.padding(12.dp)) {
+                    Text("TRACKING", color = Color.Gray, fontSize = 12.sp)
+                    Text("${report.tracking?.player_points?.size ?: 0}", color = Color(0xFF00E676), fontWeight = FontWeight.Bold)
+                }
+            }
+
+            Card(
+                modifier = Modifier.weight(1f),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFF101311)),
+                shape = RoundedCornerShape(18.dp)
+            ) {
+                Column(modifier = Modifier.padding(12.dp)) {
+                    Text("BALÓN", color = Color.Gray, fontSize = 12.sp)
+                    Text("${report.tracking?.ball_points?.size ?: 0}", color = Color(0xFF00E676), fontWeight = FontWeight.Bold)
+                }
+            }
+
+            Card(
+                modifier = Modifier.weight(1f),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFF101311)),
+                shape = RoundedCornerShape(18.dp)
+            ) {
+                Column(modifier = Modifier.padding(12.dp)) {
+                    Text("EVENTOS", color = Color.Gray, fontSize = 12.sp)
+                    Text("${report.tracking?.events?.size ?: 0}", color = Color(0xFF00E676), fontWeight = FontWeight.Bold)
+                }
+            }
+        }
+
+        HeatMapCard(report)
+        EventsCard(report)
+        RadarChart(report)
+
+        SectionCard("RESUMEN DEL ANÁLISIS", report.scouting_summary ?: "")
 
         Text("MÉTRICAS PRINCIPALES", color = Color.White, fontWeight = FontWeight.Bold)
         MetricBar("Técnica", report.scores.technical)
@@ -478,12 +605,6 @@ fun ReportDashboardPage(report: AnalysisReport, onBack: () -> Unit, onNew: () ->
         MetricBar("Físico", report.scores.physical)
         MetricBar("Decisión", report.scores.decision_making)
 
-        CompareCard(report)
-        StatsCard(report)
-        SectionCard("RESUMEN DEL ANÁLISIS", (report.scouting_summary ?: ""))
-        HeatMapCard(report)
-        EventsCard(report)
-        RadarChart(report)
         BulletSection("FORTALEZAS", report.strengths, true)
         BulletSection("A MEJORAR", report.improvements, false)
         BulletSection("PLAN DE TRABAJO", report.training_tasks, true)
@@ -907,17 +1028,146 @@ fun android.content.Context.getFileName(uri: Uri): String? {
 fun EventsCard(report: AnalysisReport) {
     val events = report.tracking?.events ?: emptyList()
 
-    Card(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text("Eventos detectados", style = MaterialTheme.typography.titleMedium)
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFF101311)),
+        shape = RoundedCornerShape(20.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Text(
+                "Línea temporal de eventos",
+                color = Color.White,
+                fontWeight = FontWeight.Bold
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            val totalDuration = 12f
+
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(50.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.CenterStart)
+                        .fillMaxWidth()
+                        .height(4.dp)
+                        .background(
+                            Color.DarkGray,
+                            RoundedCornerShape(50)
+                        )
+                )
+
+                events.take(12).forEach { event ->
+                    val t = (event.time ?: 0.0).toFloat()
+                    val pos = (t / totalDuration).coerceIn(0f, 1f)
+
+                    val timelineIcon = when(event.type) {
+                        "sprint" -> "⚡"
+                        "recuperacion" -> "🔄"
+                        "conduccion_balon" -> "⚽"
+                        "conduccion" -> "🏃"
+                        "perdida" -> "❌"
+                        "pausa" -> "⏸"
+                        "cambio_direccion" -> "↔"
+                        "pase" -> "📤"
+                        else -> "•"
+                    }
+
+                    Text(
+                        text = timelineIcon,
+                        fontSize = 18.sp,
+                        modifier = Modifier
+                            .align(Alignment.CenterStart)
+                            
+.offset(
+    x=(pos*260).dp,
+    y=(
+        if((event.time ?: 0.0)<1.5) (-12).dp
+        else if((event.time ?:0.0)<3.0) (10).dp
+        else 0.dp
+    )
+)
+
+                    )
+                }
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text("0s", color = Color.Gray, fontSize = 12.sp)
+                Text("12s", color = Color.Gray, fontSize = 12.sp)
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
 
             if (events.isEmpty()) {
-                Text("Sin eventos detectados todavía")
+                Text(
+                    "Sin eventos detectados todavía",
+                    color = Color.LightGray
+                )
             } else {
                 events.take(12).forEach { event ->
-                    Text(
-                        text = "• ${event.type ?: "evento"} · ${event.time ?: 0.0}s · ${event.description ?: ""}"
-                    )
+
+                    val icon = when (event.type) {
+                        "sprint" -> "⚡"
+                        "recuperacion" -> "🔄"
+                        "conduccion_balon" -> "⚽"
+                        "conduccion" -> "🏃"
+                        "perdida" -> "❌"
+                        "pausa" -> "⏸"
+                        "cambio_direccion" -> "↔"
+                        else -> "•"
+                    }
+
+                    val label = when (event.type) {
+                        "sprint" -> "Sprint"
+                        "recuperacion" -> "Recuperación"
+                        "conduccion_balon" -> "Conducción balón"
+                        "conduccion" -> "Movimiento"
+                        "perdida" -> "Pérdida"
+                        "pausa" -> "Pausa"
+                        "cambio_direccion" -> "Cambio dirección"
+                        else -> (event.type ?: "Evento")
+                    }
+
+                    val eventColor = when (event.type) {
+                        "sprint" -> Color(0xFFFFD600)
+                        "recuperacion" -> Color(0xFF29B6F6)
+                        "conduccion_balon" -> Color(0xFF00E676)
+                        "conduccion" -> Color(0xFF81C784)
+                        "perdida" -> Color(0xFFFF5252)
+                        "pausa" -> Color.Gray
+                        else -> Color.White
+                    }
+
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(icon, fontSize = 20.sp)
+
+                        Column {
+                            Text(
+                                text = "${event.time ?: 0.0}s · $label",
+                                color = eventColor,
+                                fontWeight = FontWeight.Bold
+                            )
+
+                            Text(
+                                text = event.description ?: "",
+                                color = Color.LightGray,
+                                fontSize = 13.sp
+                            )
+                        }
+                    }
                 }
             }
         }

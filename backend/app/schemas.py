@@ -14,6 +14,7 @@ class PlayerCreate(BaseModel):
     selected_x: float = -1.0
     selected_y: float = -1.0
     frame_percent: float = 25.0
+    attack_direction: str = "right"
     level: str
 
 

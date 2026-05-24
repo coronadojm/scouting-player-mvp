@@ -102,4 +102,100 @@ def detect_events_from_points(player_points, times=None, fps=30, stride=6):
 
 
 def detect_basic_events(player_points, ball_points=None):
-    return detect_events_from_points(player_points)
+
+    events = detect_events_from_points(player_points)
+
+    if not ball_points:
+        return events
+
+    possession=False
+
+    n=min(len(player_points),len(ball_points))
+
+    for i in range(n):
+
+        px,py=player_points[i]
+        bx,by=ball_points[i]
+
+        d=math.sqrt(
+            (px-bx)**2+
+            (py-by)**2
+        )
+
+        current=d<0.16
+
+        t=round(i*0.4,1)
+
+        # recupera posesión
+        if current and not possession:
+            events.append({
+                "type":"recuperacion",
+                "time":t,
+                "confidence":0.66,
+                "description":"Recuperación probable"
+            })
+
+        # pierde posesión
+        elif not current and possession:
+            events.append({
+                "type":"perdida",
+                "time":t,
+                "confidence":0.64,
+                "description":"Pérdida probable"
+            })
+
+        # conducción
+        elif current:
+            events.append({
+                "type":"conduccion_balon",
+                "time":t,
+                "confidence":0.61,
+                "description":"Conducción probable"
+            })
+
+        # pase probable:
+        # balón pasa de cerca a lejos rápidamente
+        if i>0 and current==False and possession:
+
+            prev_px,prev_py=player_points[i-1]
+            prev_bx,prev_by=ball_points[i-1]
+
+            prev_d=math.sqrt(
+                (prev_px-prev_bx)**2+
+                (prev_py-prev_by)**2
+            )
+
+            if prev_d<0.10 and d>0.25:
+                events.append({
+                    "type":"pase",
+                    "time":t,
+                    "confidence":0.59,
+                    "description":"Pase probable"
+                })
+
+
+        possession=current
+
+    # Si hubo posesión pero termina sin balón cerca, marcar pérdida final probable
+    if ball_points and events:
+        had_possession = any(e.get("type") in ["recuperacion", "conduccion_balon"] for e in events)
+        has_loss = any(e.get("type") == "perdida" for e in events)
+
+        if had_possession and not has_loss:
+            px, py = player_points[min(len(player_points), len(ball_points)) - 1]
+            bx, by = ball_points[-1]
+
+            final_dist = math.sqrt((px - bx) ** 2 + (py - by) ** 2)
+
+            if final_dist > 0.16:
+                events.append({
+                    "type": "perdida",
+                    "time": round((min(len(player_points), len(ball_points)) - 1) * 0.4, 1),
+                    "confidence": 0.58,
+                    "description": "Pérdida probable al final de la acción"
+                })
+
+    return sorted(
+        events,
+        key=lambda x:x["time"]
+    )[:20]

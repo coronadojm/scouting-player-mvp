@@ -27,7 +27,8 @@ interface ApiService {
         @Part("identification_mode") identificationMode: RequestBody,
         @Part("selected_x") selectedX: RequestBody,
         @Part("selected_y") selectedY: RequestBody,
-        @Part("frame_percent") framePercent: RequestBody
+        @Part("frame_percent") framePercent: RequestBody,
+        @Part("attack_direction") attackDirection: RequestBody
     ): AnalysisJobStartResponse
 
     @GET("/analysis/video/status/{jobId}")
@@ -51,6 +52,7 @@ interface ApiService {
         @Part("identification_mode") identificationMode: RequestBody,
         @Part("selected_x") selectedX: RequestBody,
         @Part("selected_y") selectedY: RequestBody,
-        @Part("frame_percent") framePercent: RequestBody
+        @Part("frame_percent") framePercent: RequestBody,
+        @Part("attack_direction") attackDirection: RequestBody
     ): AnalysisReport
 }

@@ -5,7 +5,7 @@ import math
 import numpy as np
 from pathlib import Path
 from app.vision.player_tracker import track_selected_player
-from app.vision.event_detector import detect_events_from_points
+from app.vision.event_detector import detect_events_from_points, detect_basic_events
 from app.vision.calibration.field_metrics import (
     distance_meters,
     max_speed
@@ -123,6 +123,7 @@ def analyze_video_file(
     selected_x: float = -1.0,
     selected_y: float = -1.0,
     frame_percent: float = 25.0,
+    attack_direction: str = "right",
 ):
     path = Path(video_path)
     cap = cv2.VideoCapture(str(path))
@@ -189,6 +190,13 @@ def analyze_video_file(
 
     heat_points = tracking_result.get("player_points", tracking_result.get("points", []))
 
+    # corregir eje vertical de imagen → campo
+    heat_points = [[x, round(1 - y, 4)] for x, y in heat_points]
+
+    # normalizar dirección táctica
+    if attack_direction == "left":
+        heat_points = [[round(1 - x, 4), y] for x, y in heat_points]
+
     print("DEBUG TRACKING INITIAL:", len(heat_points))
 
     if not heat_points:
@@ -207,9 +215,9 @@ def analyze_video_file(
 
         print("DEBUG TRACKING FALLBACK:", len(heat_points))
 
-    detected_events = detect_events_from_points(
+    detected_events = detect_basic_events(
             heat_points,
-            tracking_result.get("player_times")
+            tracking_result.get("ball_points", [])
         )
 
     match_summary=build_match_summary(detected_events, duration/60 if duration else 0)
@@ -217,7 +225,6 @@ def analyze_video_file(
 
     try:
         from app.vision.ball_tracker import track_ball
-        from app.vision.event_detector import detect_basic_events
         from app.vision.exporters.statsbomb_like import export_events
         from app.vision.exporters.metrica_like import export_tracking
         from app.vision.exporters.soccernet_like import export_actions
@@ -289,6 +296,9 @@ def analyze_video_file(
             "video_quality": int(min(99, avg_sharpness / 60)),
         }
 
+    distance_total = distance_meters(heat_points)
+    vmax = max_speed(heat_points)
+
     heatmap_encoded = ";".join([f"{x}:{y}" for x, y in heat_points])
 
     confidence = 55
@@ -355,7 +365,7 @@ def analyze_video_file(
             "player_engine": tracking_result.get("engine", "unknown"),
             "ball_engine": ball_result.get("engine", "unknown"),
             "tracking_active": tracking_active,
-            "ball_active": tracking_result.get("ball_active", ball_result.get("active", False)),
+            "ball_active": len(tracking_result.get("ball_points", ball_points)) > 0,
         },
 
         "notes": [
@@ -393,6 +403,7 @@ class MockAnalysisEngine:
             selected_x=float(getattr(player, "selected_x", -1.0)),
             selected_y=float(getattr(player, "selected_y", -1.0)),
             frame_percent=float(getattr(player, "frame_percent", 25.0)),
+            attack_direction=str(getattr(player, "attack_direction", "right")),
         )
 
 
@@ -402,7 +413,7 @@ def analyze_long_video(video_path, selected_x=None, selected_y=None, frame_perce
     eventos y resumen por tramos.
     """
     from app.vision.player_tracker import track_selected_player
-    from app.vision.event_detector import detect_events_from_points
+    from app.vision.event_detector import detect_events_from_points, detect_basic_events
     from app.vision.calibration.field_metrics import (
         distance_meters,
         max_speed

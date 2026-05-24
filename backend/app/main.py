@@ -84,6 +84,11 @@ def run_analysis_job(job_id: str, saved_path: str, player: PlayerCreate):
         try:
             report = engine.analyze(video_path=saved_path, player=player)
         except Exception as e:
+            print("\nERROR REAL ANALYSIS:")
+            import traceback
+            traceback.print_exc()
+            print()
+
             report = {
                 "player_name": player.name,
                 "age": player.age,
@@ -158,6 +163,7 @@ async def start_video_analysis(
     selected_x: float = Form(-1.0),
     selected_y: float = Form(-1.0),
     frame_percent: float = Form(25.0),
+    attack_direction: str = Form("right"),
 ):
     job_id = str(uuid.uuid4())
 
@@ -180,6 +186,7 @@ async def start_video_analysis(
         selected_x=selected_x,
         selected_y=selected_y,
         frame_percent=frame_percent,
+        attack_direction=attack_direction,
     )
 
     JOBS[job_id] = {
@@ -247,6 +254,7 @@ async def analyze_video(
     selected_x: float = Form(-1.0),
     selected_y: float = Form(-1.0),
     frame_percent: float = Form(25.0),
+    attack_direction: str = Form("right"),
 ):
     suffix = Path(video.filename or "video.mp4").suffix or ".mp4"
     saved_path = UPLOAD_DIR / f"{uuid.uuid4()}{suffix}"
@@ -267,6 +275,7 @@ async def analyze_video(
         selected_x=selected_x,
         selected_y=selected_y,
         frame_percent=frame_percent,
+        attack_direction=attack_direction,
     )
 
     return engine.analyze(video_path=str(saved_path), player=player)
