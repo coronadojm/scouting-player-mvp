@@ -187,8 +187,25 @@ fun ScoutingApp() {
                 .padding(22.dp)
         ) {
             Column {
-                Text("⚽ Scouting Player", style = MaterialTheme.typography.headlineLarge, color = Color.White, fontWeight = FontWeight.Bold)
-                Text("Análisis inteligente · Decisiones reales", color = Color(0xFFD7F5DD))
+                Text(
+                    "⚽ Scouting Player",
+                    style = MaterialTheme.typography.headlineLarge,
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold
+                )
+
+                Text(
+                    "Tracking · Heatmap · Eventos · Scouting",
+                    color = Color(0xFFD7F5DD)
+                )
+
+                Spacer(Modifier.height(12.dp))
+
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text("YOLO", color = Color(0xFF00E676), fontWeight = FontWeight.Bold)
+                    Text("BALÓN", color = Color(0xFF00E676), fontWeight = FontWeight.Bold)
+                    Text("TIMELINE", color = Color(0xFF00E676), fontWeight = FontWeight.Bold)
+                }
             }
         }
 
@@ -205,14 +222,24 @@ fun ScoutingApp() {
 
                     Text("Tipo de vídeo", color = Color.White)
 
-                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Button(onClick = { videoMode = "clip" }) {
-                            Text("Clip / entrenamiento")
-                        }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
 
-                        Button(onClick = { videoMode = "match" }) {
-                            Text("Partido completo")
-                        }
+                        FilterChip(
+                            selected = videoMode=="clip",
+                            onClick = { videoMode="clip" },
+                            label = { Text("🎬 Clip") },
+                            modifier = Modifier.weight(1f)
+                        )
+
+                        FilterChip(
+                            selected = videoMode=="match",
+                            onClick = { videoMode="match" },
+                            label = { Text("🏟 Partido") },
+                            modifier = Modifier.weight(1f)
+                        )
                     }
 
                     Text(
@@ -223,14 +250,24 @@ fun ScoutingApp() {
                         color = Color.White
                     )
 
-                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Button(onClick = { attackDirection = "left" }) {
-                            Text("← Izquierda")
-                        }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
 
-                        Button(onClick = { attackDirection = "right" }) {
-                            Text("Derecha →")
-                        }
+                        FilterChip(
+                            selected = attackDirection=="left",
+                            onClick = { attackDirection="left" },
+                            label = { Text("⬅ Izquierda") },
+                            modifier = Modifier.weight(1f)
+                        )
+
+                        FilterChip(
+                            selected = attackDirection=="right",
+                            onClick = { attackDirection="right" },
+                            label = { Text("Derecha ➡") },
+                            modifier = Modifier.weight(1f)
+                        )
                     }
 
                     if (videoMode == "match") {
@@ -255,9 +292,32 @@ fun ScoutingApp() {
                                 "partido · 1ª parte " + if (attackDirection == "left") "←" else "→",
                         color = Color.LightGray
                     )
-                    OutlinedTextField(shirtColor, { shirtColor = it }, label = { Text("Color camiseta") }, modifier = Modifier.fillMaxWidth())
-                    OutlinedTextField(foot, { foot = it }, label = { Text("Pierna dominante") }, modifier = Modifier.fillMaxWidth())
-                    OutlinedTextField(level, { level = it }, label = { Text("Nivel") }, modifier = Modifier.fillMaxWidth())
+                    OutlinedTextField(
+                        shirtColor,
+                        { shirtColor = it },
+                        label = { Text("⚽ Color camiseta") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+
+                        OutlinedTextField(
+                            foot,
+                            { foot = it },
+                            label = { Text("🦶 Pierna") },
+                            modifier = Modifier.weight(1f)
+                        )
+
+                        OutlinedTextField(
+                            level,
+                            { level = it },
+                            label = { Text("📊 Nivel") },
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
 
                     Text("Modo identificación", color = Color.White, fontWeight = FontWeight.Bold)
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
@@ -280,10 +340,33 @@ fun ScoutingApp() {
 
             Card(shape = RoundedCornerShape(22.dp), colors = CardDefaults.cardColors(containerColor = Color(0xFF171A18))) {
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text("Vídeo", fontWeight = FontWeight.Bold, color = Color.White)
+                    Text("Vídeo del partido o entrenamiento", fontWeight = FontWeight.Bold, color = Color.White)
 
-                    Button(onClick = { picker.launch("video/*") }, modifier = Modifier.fillMaxWidth()) {
-                        Text(if (selectedVideoUri == null) "Seleccionar vídeo" else "Vídeo seleccionado")
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFF0B1F13)),
+                        shape = RoundedCornerShape(22.dp),
+                        onClick = { picker.launch("video/*") }
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(24.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Text(
+                                text = if (selectedVideoUri == null) "＋ Seleccionar vídeo" else "✅ Vídeo seleccionado",
+                                color = Color(0xFF00E676),
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 20.sp
+                            )
+
+                            Text(
+                                text = "MP4 / MOV · Partido, clip o entrenamiento",
+                                color = Color.LightGray,
+                                fontSize = 13.sp
+                            )
+                        }
                     }
 
                     if (identificationMode == "Dorsal + selección manual") {
@@ -475,7 +558,19 @@ fun ScoutingApp() {
                             }
                         }
                     ) {
-                        Text(if (loading) "Analizando..." else "Analizar jugador")
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(
+                                if (loading) "Analizando..." else "🚀 Analizar jugador",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 18.sp
+                            )
+                            Text(
+                                "Tracking + Heatmap + Eventos",
+                                fontSize = 12.sp
+                            )
+                        }
                     }
 
                     if (loading) {
