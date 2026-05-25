@@ -1,6 +1,7 @@
 package com.example.scoutingplayer
 
 import android.content.Intent
+import android.content.Context
 import android.graphics.Bitmap
 import android.media.MediaMetadataRetriever
 import android.net.Uri
@@ -15,6 +16,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.*
@@ -108,6 +110,8 @@ fun ScoutingApp() {
 
     var selectedPlayerX by remember { mutableStateOf<Float?>(null) }
     var selectedPlayerY by remember { mutableStateOf<Float?>(null) }
+    var selectedPlayerW by remember { mutableStateOf(0.035f) }
+    var selectedPlayerH by remember { mutableStateOf(0.09f) }
     var imageW by remember { mutableStateOf(1) }
     var imageH by remember { mutableStateOf(1) }
 
@@ -123,6 +127,11 @@ fun ScoutingApp() {
     var analysisStage by remember { mutableStateOf("Preparando análisis...") }
     var error by remember { mutableStateOf<String?>(null) }
     var showReportPage by remember { mutableStateOf(false) }
+    var currentTab by remember { mutableStateOf("inicio") }
+
+    var compareA by remember { mutableStateOf<Int?>(null) }
+    var compareB by remember { mutableStateOf<Int?>(null) }
+    var historyRefresh by remember { mutableStateOf(0) }
 
     fun loadFrame(uri: Uri, pct: Int) {
         runCatching {
@@ -210,6 +219,7 @@ fun ScoutingApp() {
         }
 
         Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            if (currentTab == "inicio") {
             Card(shape = RoundedCornerShape(22.dp), colors = CardDefaults.cardColors(containerColor = Color(0xFF171A18))) {
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Text("Datos del jugador", fontWeight = FontWeight.Bold, color = Color.White)
@@ -338,6 +348,225 @@ fun ScoutingApp() {
                 }
             }
 
+            }
+
+            if (currentTab == "informes") {
+                Card(
+                    shape = RoundedCornerShape(22.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFF171A18))
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Text("📊 Último informe", fontWeight = FontWeight.Bold, color = Color.White)
+
+                        val historyTick = historyRefresh
+                        val history = loadReportHistory(context)
+
+                        if (history.isEmpty() && report == null) {
+                            Text("Todavía no hay informes generados.", color = Color.LightGray)
+                            Text("Analiza un vídeo para crear el primer informe.", color = Color.Gray, fontSize = 13.sp)
+                        } else if (history.isNotEmpty()) {
+
+                            history.take(10).forEachIndexed { index,item ->
+                                val name = item.getOrNull(1) ?: "Jugador"
+                                val pos = item.getOrNull(2) ?: ""
+                                val score = item.getOrNull(3) ?: "0.0"
+                                val events = item.getOrNull(4) ?: "0"
+
+                                Card(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable {
+
+                                            if(compareA==null)
+                                                compareA=index
+                                            else if(compareB==null)
+                                                compareB=index
+                                            else{
+                                                compareA=index
+                                                compareB=null
+                                            }
+                                        },
+                                    colors = CardDefaults.cardColors(containerColor = Color(0xFF101311)),
+                                    shape = RoundedCornerShape(16.dp)
+                                ) {
+                                    Column(
+                                        modifier = Modifier.padding(12.dp),
+                                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                                    ) {
+                                        Text(
+                                            (if(compareA==index) "🅰 " else if(compareB==index) "🅱 " else "") + name,
+                                            color = Color(0xFF00E676),
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                        Text(pos, color = Color.LightGray)
+
+                                        Row(
+                                            modifier=Modifier.fillMaxWidth(),
+                                            horizontalArrangement=Arrangement.SpaceBetween
+                                        ){
+
+                                            Text(
+                                                "Nota $score · $events eventos",
+                                                color = Color.Gray,
+                                                fontSize = 13.sp
+                                            )
+
+                                            Text(
+                                                "🗑",
+                                                fontSize=20.sp,
+                                                modifier=Modifier.clickable{
+
+                                                    deleteReportAt(
+                                                        context,
+                                                        index
+                                                    )
+
+                                                    compareA=null
+                                                    compareB=null
+                                                    historyRefresh++
+                                                }
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+
+
+
+                            if(compareA!=null && compareB!=null){
+
+                                val a=history[compareA!!]
+                                val b=history[compareB!!]
+
+                                Card(
+                                    modifier=Modifier.fillMaxWidth(),
+                                    colors=CardDefaults.cardColors(
+                                        containerColor=Color(0xFF0B1F13)
+                                    ),
+                                    shape=RoundedCornerShape(18.dp)
+                                ){
+                                    Column(
+                                        Modifier.padding(14.dp)
+                                    ){
+                                        Text(
+                                            "⚔ Comparativa seleccionada",
+                                            color=Color.White,
+                                            fontWeight=FontWeight.Bold
+                                        )
+
+                                        Text(
+                                            "${a[1]} vs ${b[1]}",
+                                            color=Color(0xFF00E676)
+                                        )
+
+                                        Text("Nota: ${a[3]} / ${b[3]}")
+                                        Text("Eventos: ${a[4]} / ${b[4]}")
+                                        Text("Técnica: ${a[5]} / ${b[5]}")
+                                        Text("Táctica: ${a[6]} / ${b[6]}")
+                                        Text("Físico: ${a[7]} / ${b[7]}")
+                                        Text("Decisión: ${a[8]} / ${b[8]}")
+                                    }
+                                }
+                            }
+
+                        } else {
+
+                            Text(
+                                report?.player_name ?: "Jugador",
+                                color = Color(0xFF00E676),
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 22.sp
+                            )
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+
+                                Card(
+                                    modifier=Modifier.weight(1f),
+                                    colors=CardDefaults.cardColors(
+                                        containerColor=Color(0xFF101311)
+                                    )
+                                ){
+                                    Column(Modifier.padding(12.dp)){
+                                        Text("NOTA",color=Color.Gray,fontSize=11.sp)
+                                        Text(
+                                            "${report?.scores?.global_score ?: 0.0}",
+                                            color=Color.White,
+                                            fontWeight=FontWeight.Bold
+                                        )
+                                    }
+                                }
+
+                                Card(
+                                    modifier=Modifier.weight(1f),
+                                    colors=CardDefaults.cardColors(
+                                        containerColor=Color(0xFF101311)
+                                    )
+                                ){
+                                    Column(Modifier.padding(12.dp)){
+                                        Text("EVENTOS",color=Color.Gray,fontSize=11.sp)
+                                        Text(
+                                            "${report?.tracking?.events?.size ?: 0}",
+                                            color=Color.White,
+                                            fontWeight=FontWeight.Bold
+                                        )
+                                    }
+                                }
+                            }
+
+                            Spacer(Modifier.height(8.dp))
+
+                            Button(
+                                onClick = { showReportPage = true },
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text("📊 Abrir informe completo")
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (currentTab == "jugadores") {
+                Card(
+                    shape = RoundedCornerShape(22.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFF171A18))
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Text("👤 Jugador actual", fontWeight = FontWeight.Bold, color = Color.White)
+                        Text(playerName, color = Color(0xFF00E676), fontWeight = FontWeight.Bold)
+                        Text("Posición: $position", color = Color.LightGray)
+                        Text("Categoría: $category · Edad: $age", color = Color.LightGray)
+                        Text("Dorsal: $dorsal · Pierna: $foot", color = Color.LightGray)
+                    }
+                }
+            }
+
+            if (currentTab == "ajustes") {
+                Card(
+                    shape = RoundedCornerShape(22.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFF171A18))
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Text("⚙️ Ajustes", fontWeight = FontWeight.Bold, color = Color.White)
+                        Text("Backend local", color = Color.LightGray)
+                        Text("http://192.168.1.36:8000/", color = Color(0xFF00E676), fontWeight = FontWeight.Bold)
+                        Text("Modo desarrollo local · APK → FastAPI → YOLO", color = Color.Gray, fontSize = 13.sp)
+                    }
+                }
+            }
+
             Card(shape = RoundedCornerShape(22.dp), colors = CardDefaults.cardColors(containerColor = Color(0xFF171A18))) {
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Text("Vídeo del partido o entrenamiento", fontWeight = FontWeight.Bold, color = Color.White)
@@ -373,69 +602,192 @@ fun ScoutingApp() {
                     firstFrame?.let { frame ->
                         Text("Elige un momento donde se vea el jugador", color = Color.White, fontWeight = FontWeight.Bold)
 
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                            listOf(10, 25, 50, 75).forEach { pct ->
-                                Button(
-                                    onClick = {
-                                        framePercent = pct
-                                        selectedVideoUri?.let { loadFrame(it, pct) }
-                                        selectedPlayerX = null
-                                        selectedPlayerY = null
-                                        zoomScale = 1f
-                                        offsetX = 0f
-                                        offsetY = 0f
-                                    },
-                                    modifier = Modifier.weight(1f)
-                                ) { Text("${pct}%", maxLines = 1, fontSize = 16.sp, fontWeight = FontWeight.Bold) }
-                            }
+                        Text(
+                            "Momento del vídeo: $framePercent%",
+                            color = Color(0xFF00E676),
+                            fontWeight = FontWeight.Bold
+                        )
+
+                        Slider(
+                            value = framePercent.toFloat(),
+                            onValueChange = { value ->
+                                framePercent = value.toInt().coerceIn(0, 100)
+                            },
+                            onValueChangeFinished = {
+                                selectedVideoUri?.let { loadFrame(it, framePercent) }
+                                selectedPlayerX = null
+                                selectedPlayerY = null
+                                selectedPlayerW = 0.035f
+                                selectedPlayerH = 0.09f
+                                zoomScale = 1f
+                                offsetX = 0f
+                                offsetY = 0f
+                            },
+                            valueRange = 0f..100f
+                        )
+
+                        Button(
+                            onClick = {
+                                selectedVideoUri?.let { loadFrame(it, framePercent) }
+                                selectedPlayerX = null
+                                selectedPlayerY = null
+                                selectedPlayerW = 0.035f
+                                selectedPlayerH = 0.09f
+                                zoomScale = 1f
+                                offsetX = 0f
+                                offsetY = 0f
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("Cargar frame seleccionado")
                         }
 
                         Text("Frame: $framePercent% · Pellizca para ampliar, arrastra y toca al jugador.", color = Color.LightGray)
 
-                        Image(
-                            bitmap = frame.asImageBitmap(),
-                            contentDescription = "Frame selección jugador",
-                            contentScale = ContentScale.Fit,
+                        Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(260.dp)
+                                .height(320.dp)
                                 .clip(RoundedCornerShape(18.dp))
                                 .background(Color(0xFF050805))
                                 .onSizeChanged {
                                     imageW = it.width.coerceAtLeast(1)
                                     imageH = it.height.coerceAtLeast(1)
                                 }
-                                .graphicsLayer(
-                                    scaleX = zoomScale,
-                                    scaleY = zoomScale,
-                                    translationX = offsetX,
-                                    translationY = offsetY
-                                )
                                 .pointerInput(Unit) {
                                     detectTransformGestures { _, pan, zoom, _ ->
-                                        zoomScale = (zoomScale * zoom).coerceIn(1f, 3f)
-                                        offsetX = (offsetX + pan.x).coerceIn(-imageW * 0.25f, imageW * 0.25f)
-                                        offsetY = (offsetY + pan.y).coerceIn(-imageH * 0.25f, imageH * 0.25f)
+                                        zoomScale = (zoomScale * zoom).coerceIn(1f, 5f)
+
+                                        val maxX = imageW * (zoomScale - 1f) / 2f
+                                        val maxY = imageH * (zoomScale - 1f) / 2f
+
+                                        offsetX = (offsetX + pan.x).coerceIn(-maxX, maxX)
+                                        offsetY = (offsetY + pan.y).coerceIn(-maxY, maxY)
                                     }
                                 }
                                 .pointerInput(Unit) {
                                     detectTapGestures { offset ->
-                                        val x = ((offset.x - offsetX) / zoomScale) / imageW
-                                        val y = ((offset.y - offsetY) / zoomScale) / imageH
-                                        selectedPlayerX = x.coerceIn(0f, 1f)
-                                        selectedPlayerY = y.coerceIn(0f, 1f)
+                                        val boxW = imageW.toFloat()
+                                        val boxH = imageH.toFloat()
+
+                                        val frameW = frame.width.toFloat()
+                                        val frameH = frame.height.toFloat()
+
+                                        val fitScale = minOf(boxW / frameW, boxH / frameH)
+                                        val shownW = frameW * fitScale
+                                        val shownH = frameH * fitScale
+
+                                        val padX = (boxW - shownW) / 2f
+                                        val padY = (boxH - shownH) / 2f
+
+                                        val centerX = boxW / 2f
+                                        val centerY = boxH / 2f
+
+                                        val unzoomX = ((offset.x - centerX - offsetX) / zoomScale) + centerX
+                                        val unzoomY = ((offset.y - centerY - offsetY) / zoomScale) + centerY
+
+                                        val x = ((unzoomX - padX) / shownW).coerceIn(0f, 1f)
+                                        val y = ((unzoomY - padY) / shownH).coerceIn(0f, 1f)
+
+                                        selectedPlayerX = x
+                                        selectedPlayerY = y
                                     }
                                 }
-                        )
+                        ) {
+                            Image(
+                                bitmap = frame.asImageBitmap(),
+                                contentDescription = "Frame selección jugador",
+                                contentScale = ContentScale.Fit,
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .graphicsLayer(
+                                        scaleX = zoomScale,
+                                        scaleY = zoomScale,
+                                        translationX = offsetX,
+                                        translationY = offsetY
+                                    )
+                            )
+
+                            Canvas(modifier = Modifier.fillMaxSize()) {
+                                if (selectedPlayerX != null && selectedPlayerY != null) {
+                                    val boxW = imageW.toFloat()
+                                    val boxH = imageH.toFloat()
+
+                                    val frameW = frame.width.toFloat()
+                                    val frameH = frame.height.toFloat()
+
+                                    val fitScale = minOf(boxW / frameW, boxH / frameH)
+                                    val shownW = frameW * fitScale
+                                    val shownH = frameH * fitScale
+
+                                    val padX = (boxW - shownW) / 2f
+                                    val padY = (boxH - shownH) / 2f
+
+                                    val baseX = padX + selectedPlayerX!! * shownW
+                                    val baseY = padY + selectedPlayerY!! * shownH
+
+                                    val centerX = boxW / 2f
+                                    val centerY = boxH / 2f
+
+                                    val cx = ((baseX - centerX) * zoomScale) + centerX + offsetX
+                                    val cy = ((baseY - centerY) * zoomScale) + centerY + offsetY
+
+                                    drawCircle(
+                                        color = Color(0xAA00E676),
+                                        radius = 18f,
+                                        center = androidx.compose.ui.geometry.Offset(cx, cy),
+                                        style = Stroke(width = 5f)
+                                    )
+
+                                    val bw = selectedPlayerW * shownW * zoomScale
+                                    val bh = selectedPlayerH * shownH * zoomScale
+
+                                    drawRect(
+                                        color = Color(0xAA00E676),
+                                        topLeft = androidx.compose.ui.geometry.Offset(cx - bw / 2f, cy - bh / 2f),
+                                        size = Size(bw, bh),
+                                        style = Stroke(width = 5f)
+                                    )
+
+                                    drawCircle(
+                                        color = Color(0xFFFFD600),
+                                        radius = 7f,
+                                        center = androidx.compose.ui.geometry.Offset(cx, cy)
+                                    )
+                                }
+                            }
+                        }
 
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                             Button(onClick = { zoomScale = 1f; offsetX = 0f; offsetY = 0f }, modifier = Modifier.weight(1f)) { Text("Reset") }
-                            Button(onClick = { zoomScale = (zoomScale + 0.5f).coerceAtMost(3f) }, modifier = Modifier.weight(1f)) { Text("Zoom +") }
+                            Button(onClick = { zoomScale = (zoomScale + 0.5f).coerceAtMost(5f) }, modifier = Modifier.weight(1f)) { Text("Zoom +") }
                             Button(onClick = { zoomScale = (zoomScale - 0.5f).coerceAtLeast(1f) }, modifier = Modifier.weight(1f)) { Text("Zoom -") }
                         }
 
                         if (selectedPlayerX != null && selectedPlayerY != null) {
-                            Text("Jugador marcado: X ${(selectedPlayerX!! * 100).toInt()}% · Y ${(selectedPlayerY!! * 100).toInt()}%", color = Color(0xFF00E676), fontWeight = FontWeight.Bold)
+                            Text(
+                                "Jugador marcado · ajusta el recuadro al cuerpo",
+                                color = Color(0xFF00E676),
+                                fontWeight = FontWeight.Bold
+                            )
+
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                                Button(onClick = { selectedPlayerW = (selectedPlayerW - 0.01f).coerceAtLeast(0.015f) }, modifier = Modifier.weight(1f)) {
+                                    Text("Ancho -")
+                                }
+                                Button(onClick = { selectedPlayerW = (selectedPlayerW + 0.01f).coerceAtMost(0.25f) }, modifier = Modifier.weight(1f)) {
+                                    Text("Ancho +")
+                                }
+                            }
+
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                                Button(onClick = { selectedPlayerH = (selectedPlayerH - 0.02f).coerceAtLeast(0.04f) }, modifier = Modifier.weight(1f)) {
+                                    Text("Alto -")
+                                }
+                                Button(onClick = { selectedPlayerH = (selectedPlayerH + 0.02f).coerceAtMost(0.45f) }, modifier = Modifier.weight(1f)) {
+                                    Text("Alto +")
+                                }
+                            }
                         }
                     }
 
@@ -489,7 +841,7 @@ fun ScoutingApp() {
 
                                         progress = 0.75f
                                         run {
-                                            progress = 0.08f
+                                            progress = 0.04f
                                             analysisStage = "Subiendo vídeo al servidor..."
 
                                             val job = NetworkModule.api.startAnalysis(
@@ -505,6 +857,8 @@ fun ScoutingApp() {
                                                 identificationMode = part(identificationMode),
                                                 selectedX = part((selectedPlayerX ?: -1f).toString()),
                                                 selectedY = part((selectedPlayerY ?: -1f).toString()),
+                                                selectedW = part(selectedPlayerW.toString()),
+                                                selectedH = part(selectedPlayerH.toString()),
                                                 framePercent = part(framePercent.toString()),
                                                 attackDirection = part(attackDirection)
                                             )
@@ -545,6 +899,7 @@ fun ScoutingApp() {
                                         }
                                     }
                                     progress = 1f
+                                    saveReportSummary(context, result)
                                     report = result
                                     showReportPage=true
                                 } catch (e: Exception) {
@@ -586,7 +941,7 @@ fun ScoutingApp() {
                         Text("Error: $it", color = Color(0xFFFF8080))
                     }
 
-                    BottomNavBar()
+                    BottomNavBar(currentTab = currentTab, onTabSelected = { currentTab = it })
                 }
             }
 
@@ -662,8 +1017,8 @@ fun ReportDashboardPage(report: AnalysisReport, onBack: () -> Unit, onNew: () ->
                 shape = RoundedCornerShape(18.dp)
             ) {
                 Column(modifier = Modifier.padding(12.dp)) {
-                    Text("TRACKING", color = Color.Gray, fontSize = 12.sp)
-                    Text("${report.tracking?.player_points?.size ?: 0}", color = Color(0xFF00E676), fontWeight = FontWeight.Bold)
+                    Text("DISTANCIA", color = Color.Gray, fontSize = 12.sp)
+                    Text("${report.tracking?.distance_meters ?: 0.0} m", color = Color(0xFF00E676), fontWeight = FontWeight.Bold)
                 }
             }
 
@@ -673,8 +1028,8 @@ fun ReportDashboardPage(report: AnalysisReport, onBack: () -> Unit, onNew: () ->
                 shape = RoundedCornerShape(18.dp)
             ) {
                 Column(modifier = Modifier.padding(12.dp)) {
-                    Text("BALÓN", color = Color.Gray, fontSize = 12.sp)
-                    Text("${report.tracking?.ball_points?.size ?: 0}", color = Color(0xFF00E676), fontWeight = FontWeight.Bold)
+                    Text("VEL.MAX", color = Color.Gray, fontSize = 12.sp)
+                    Text("${report.tracking?.max_speed_kmh ?: 0.0} km/h", color = Color(0xFF00E676), fontWeight = FontWeight.Bold)
                 }
             }
 
@@ -1273,7 +1628,7 @@ fun EventsCard(report: AnalysisReport) {
 
 
 @Composable
-fun BottomNavBar() {
+fun BottomNavBar(currentTab: String, onTabSelected: (String) -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = Color(0xFF101311)),
@@ -1285,10 +1640,92 @@ fun BottomNavBar() {
                 .padding(vertical = 10.dp),
             horizontalArrangement = Arrangement.SpaceAround
         ) {
-            Text("🏠\nInicio", color = Color(0xFF00E676), fontSize = 12.sp)
-            Text("📊\nInformes", color = Color.LightGray, fontSize = 12.sp)
-            Text("👤\nJugadores", color = Color.LightGray, fontSize = 12.sp)
-            Text("⚙️\nAjustes", color = Color.LightGray, fontSize = 12.sp)
+            Text(
+                "🏠\nInicio",
+                color = if (currentTab=="inicio") Color(0xFF00E676) else Color.LightGray,
+                fontSize = 12.sp,
+                modifier = Modifier.clickable { onTabSelected("inicio") }
+            )
+            Text(
+                "📊\nInformes",
+                color = if (currentTab=="informes") Color(0xFF00E676) else Color.LightGray,
+                fontSize = 12.sp,
+                modifier = Modifier.clickable { onTabSelected("informes") }
+            )
+            Text(
+                "👤\nJugadores",
+                color = if (currentTab=="jugadores") Color(0xFF00E676) else Color.LightGray,
+                fontSize = 12.sp,
+                modifier = Modifier.clickable { onTabSelected("jugadores") }
+            )
+            Text(
+                "⚙️\nAjustes",
+                color = if (currentTab=="ajustes") Color(0xFF00E676) else Color.LightGray,
+                fontSize = 12.sp,
+                modifier = Modifier.clickable { onTabSelected("ajustes") }
+            )
         }
     }
+}
+
+
+fun saveReportSummary(context: Context, report: AnalysisReport) {
+    val prefs = context.getSharedPreferences("report_history", Context.MODE_PRIVATE)
+    val old = prefs.getString("items", "") ?: ""
+
+    val item = listOf(
+        System.currentTimeMillis().toString(),
+        report.player_name,
+        report.position,
+        report.scores.global_score.toString(),
+        (report.tracking?.events?.size ?: 0).toString(),
+        report.scores.technical.toString(),
+        report.scores.tactical.toString(),
+        report.scores.physical.toString(),
+        report.scores.decision_making.toString(),
+        (report.tracking?.player_points?.size ?: 0).toString(),
+        (report.tracking?.ball_points?.size ?: 0).toString()
+    ).joinToString("|")
+
+    val updated = (item + "\n" + old)
+        .lines()
+        .filter { it.isNotBlank() }
+        .take(20)
+        .joinToString("\n")
+
+    prefs.edit().putString("items", updated).apply()
+}
+
+fun loadReportHistory(context: Context): List<List<String>> {
+    val prefs = context.getSharedPreferences("report_history", Context.MODE_PRIVATE)
+    val raw = prefs.getString("items", "") ?: ""
+
+    return raw.lines()
+        .filter { it.isNotBlank() }
+        .map { it.split("|") }
+}
+
+
+fun deleteReportAt(context: Context,index:Int){
+
+    val prefs=context.getSharedPreferences(
+        "report_history",
+        Context.MODE_PRIVATE
+    )
+
+    val raw=(prefs.getString("items","") ?: "")
+        .lines()
+        .filter{it.isNotBlank()}
+        .toMutableList()
+
+    if(index in raw.indices){
+        raw.removeAt(index)
+    }
+
+    prefs.edit()
+        .putString(
+            "items",
+            raw.joinToString("\n")
+        )
+        .apply()
 }

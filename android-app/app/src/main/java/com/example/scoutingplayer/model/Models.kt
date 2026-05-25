@@ -22,7 +22,9 @@ data class TrackingData(
     val player_engine: String? = null,
     val ball_engine: String? = null,
     val tracking_active: Boolean? = false,
-    val ball_active: Boolean? = false
+    val ball_active: Boolean? = false,
+    val distance_meters: Double? = 0.0,
+    val max_speed_kmh: Double? = 0.0
 )
 
 data class AnalysisReport(

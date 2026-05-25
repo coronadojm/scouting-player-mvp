@@ -27,6 +27,8 @@ interface ApiService {
         @Part("identification_mode") identificationMode: RequestBody,
         @Part("selected_x") selectedX: RequestBody,
         @Part("selected_y") selectedY: RequestBody,
+        @Part("selected_w") selectedW: RequestBody,
+        @Part("selected_h") selectedH: RequestBody,
         @Part("frame_percent") framePercent: RequestBody,
         @Part("attack_direction") attackDirection: RequestBody
     ): AnalysisJobStartResponse
@@ -52,6 +54,8 @@ interface ApiService {
         @Part("identification_mode") identificationMode: RequestBody,
         @Part("selected_x") selectedX: RequestBody,
         @Part("selected_y") selectedY: RequestBody,
+        @Part("selected_w") selectedW: RequestBody,
+        @Part("selected_h") selectedH: RequestBody,
         @Part("frame_percent") framePercent: RequestBody,
         @Part("attack_direction") attackDirection: RequestBody
     ): AnalysisReport

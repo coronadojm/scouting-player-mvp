@@ -6,7 +6,14 @@ import retrofit2.converter.gson.GsonConverterFactory
 import java.util.concurrent.TimeUnit
 
 object NetworkModule {
-    private const val BASE_URL = "http://192.168.1.36:8000/"
+    private var BASE_URL = "http://192.168.1.36:8000/"
+
+fun getBaseUrl(): String = BASE_URL
+
+fun setBaseUrl(url:String){
+    BASE_URL=url
+}
+
 
     private val client = OkHttpClient.Builder()
         .connectTimeout(60, TimeUnit.SECONDS)

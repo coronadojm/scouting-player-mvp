@@ -46,6 +46,21 @@ def update_job(job_id: str, data: dict):
     save_job(job_id)
 
 
+def cleanup_old_uploads(keep: int = 3):
+    videos = [
+        p for p in UPLOAD_DIR.iterdir()
+        if p.is_file() and p.suffix.lower() in [".mp4", ".mov", ".m4v", ".avi"]
+    ]
+
+    videos = sorted(videos, key=lambda p: p.stat().st_mtime, reverse=True)
+
+    for old_video in videos[keep:]:
+        try:
+            old_video.unlink()
+        except Exception:
+            pass
+
+
 @app.get("/health")
 async def health():
     return {"status": "ok", "version": "render_test_3848239"}
@@ -74,10 +89,28 @@ def run_analysis_job(job_id: str, saved_path: str, player: PlayerCreate):
         time.sleep(0.2)
 
         update_job(job_id, {
-            "progress": 35,
-            "stage": "Analizando vídeo en modo seguro Render.",
+            "progress": 25,
+            "stage": "Extrayendo frames y preparando vídeo.",
             "elapsed_seconds": int(time.time() - start),
-            "estimated_remaining_seconds": 40,
+            "estimated_remaining_seconds": 50,
+        })
+
+        time.sleep(0.2)
+
+        update_job(job_id, {
+            "progress": 45,
+            "stage": "Tracking del jugador seleccionado.",
+            "elapsed_seconds": int(time.time() - start),
+            "estimated_remaining_seconds": 35,
+        })
+
+        time.sleep(0.2)
+
+        update_job(job_id, {
+            "progress": 65,
+            "stage": "Detectando balón y eventos.",
+            "elapsed_seconds": int(time.time() - start),
+            "estimated_remaining_seconds": 20,
         })
 
         # MODO SEGURO: evita que YOLO/Torch bloquee Render.
@@ -120,8 +153,8 @@ def run_analysis_job(job_id: str, saved_path: str, player: PlayerCreate):
             }
 
         update_job(job_id, {
-            "progress": 90,
-            "stage": "Generando informe.",
+            "progress": 85,
+            "stage": "Generando informe profesional.",
             "elapsed_seconds": int(time.time() - start),
             "estimated_remaining_seconds": 5,
         })
@@ -162,6 +195,8 @@ async def start_video_analysis(
     identification_mode: str = Form("Color camiseta + dorsal"),
     selected_x: float = Form(-1.0),
     selected_y: float = Form(-1.0),
+    selected_w: float = Form(0.035),
+    selected_h: float = Form(0.09),
     frame_percent: float = Form(25.0),
     attack_direction: str = Form("right"),
 ):
@@ -185,6 +220,8 @@ async def start_video_analysis(
         identification_mode=identification_mode,
         selected_x=selected_x,
         selected_y=selected_y,
+        selected_w=selected_w,
+        selected_h=selected_h,
         frame_percent=frame_percent,
         attack_direction=attack_direction,
     )
@@ -201,6 +238,8 @@ async def start_video_analysis(
     }
 
     save_job(job_id)
+
+    cleanup_old_uploads(keep=3)
 
     # Modo estable Render: ejecutar directamente para evitar que el thread se pierda.
     run_analysis_job(job_id, str(saved_path), player)
@@ -253,6 +292,8 @@ async def analyze_video(
     identification_mode: str = Form("Color camiseta + dorsal"),
     selected_x: float = Form(-1.0),
     selected_y: float = Form(-1.0),
+    selected_w: float = Form(0.035),
+    selected_h: float = Form(0.09),
     frame_percent: float = Form(25.0),
     attack_direction: str = Form("right"),
 ):
@@ -274,6 +315,8 @@ async def analyze_video(
         identification_mode=identification_mode,
         selected_x=selected_x,
         selected_y=selected_y,
+        selected_w=selected_w,
+        selected_h=selected_h,
         frame_percent=frame_percent,
         attack_direction=attack_direction,
     )
